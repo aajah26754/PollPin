@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #pollDiv {
+            border: 1px solid black;
+            overflow-y: auto;
+            padding: 10px;
+            width: 200px;
+        }
+
+        #newPollOptionDiv {
+            border: 1px solid black;
+        }
+
+        .pollChoices {
+            list-style-type: none;
+            align-items: left;
+            padding: 10px;
+            margin: 0;
+            overflow: auto;
+
+        }
+    </style>
+</head>
+
+<body>
+    <input type="text" placeholder="Poll Name" id="NewPollName"><br><br>
+    <div id="newPollOptionDiv">
+        <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
+    </div>
+    <button id="addOptionButton" onclick="addOption()">add option</button>
+    <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
+
+    <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
+
+
+    <div id="pollDiv">
+    </div>
+</body>
+<script>
+
+    addOptionButton = document.getElementById("addOptionButton");
+    createPollButton = document.getElementById("createPollButton");
+    pollDiv = document.getElementById("pollDiv");
+    currentOptionCount = 1;
+
+    function addOption() {
+        let newOption = document.createElement("input");
+        newOption.type = "text";
+        newOption.placeholder = "Poll Option";
+        newOption.id = "NewPollOption" + (currentOptionCount + 1);
+        newPollOptionDiv.appendChild(newOption);
+        newPollOptionDiv.appendChild(document.createElement("br"));
+        currentOptionCount++;
+        console.log(currentOptionCount);
+    }
+
+    function removeOption() {
+        if (currentOptionCount > 1) {
+            newPollOptionDiv.removeChild(newPollOptionDiv.lastChild);
+            newPollOptionDiv.removeChild(newPollOptionDiv.lastChild);
+            currentOptionCount--;
+            console.log(currentOptionCount);
+        }
+    }
+
+    function fillPoll() {
+        let pollName = arguments[0];
+        let options = arguments[1];
+        let pollHTML = document.createElement("div");
+        let pollTitle = document.createElement("h3");
+        pollTitle.innerText = pollName;
+        pollHTML.appendChild(pollTitle);
+        let optionList = document.createElement("ul");
+        optionList.className = "pollChoices";
+        for (let i = 0; i < options.length; i++) {
+            let optionItem = document.createElement("li");
+            let optionInput = document.createElement("input");
+            optionInput.type = "radio";
+            optionInput.name = pollName;
+            optionInput.value = options[i];
+            optionItem.appendChild(optionInput);
+            optionItem.appendChild(document.createTextNode(options[i]));
+            optionList.appendChild(optionItem);
+            optionList.appendChild(document.createElement("br"));
+        }
+        pollHTML.appendChild(optionList);
+        pollDiv.appendChild(pollHTML);
+    }
+
+    function newPoll() {
+        if (document.getElementById("NewPollName").value.trim() === "") {
+            alert("Please enter a poll name.");
+            return;
+        }
+        let pollName = document.getElementById("NewPollName").value;
+        let options = [];
+        for (let i = 1; i <= currentOptionCount; i++) {
+            if (document.getElementById("NewPollOption" + i).value.trim() === "") {
+                alert("Please don't leave any options blank.");
+                return;
+            }
+        }
+        for (let i = 1; i <= currentOptionCount; i++) {
+            let optionValue = document.getElementById("NewPollOption" + i).value;
+            options.push(optionValue);
+        }
+        console.log(pollName);
+        console.log(options);
+        fillPoll(pollName, options);
+
+        NewPollName.value = "";
+        currentOptionCount = 1;
+        newPollOptionDiv.innerHTML = '<input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>'; // reset number of option text fields
+    }
+</script>
+
+</html>
