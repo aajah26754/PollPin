@@ -1,16 +1,27 @@
 let express = require('express');
 let app = express();
+const sqlite3 = require('sqlite3');
 const { io } = require('socket.io-client');
-const FORMBAR_URL = 'http://localhost:420'  //'http://172.16.3.159:420/';
-const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d';
-
+const FORMBAR_URL = 'localhost:420'  //'http://172.16.3.159:420/';
+const API_KEY = '81bf3b7cb7c2d41a7f34b7e5c29247fe07f4f74b6205efc468064efcf11fee82';
+port = 3000;
 const socket = io(FORMBAR_URL, {
-    extraHeaders: {
-        api: API_KEY
+    auth: {
+        token: API_KEY
+    }
+});
+
+const db = new sqlite3.Database('data/database.db', (err) => {
+    if (err) {
+        console.error('Error opening database ' + err.message);
+    } else {
+        console.log('Connected to the database.');
     }
 });
 
 app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
 socket.on('connect', () => {
     console.log('Connected');
@@ -44,4 +55,6 @@ app.get('/', function (req, res) {
     res.render('Polls');
 });
 
-app.listen(3000);
+app.listen(port, () => {
+    console.log(`Listening on ${port}`)
+});
