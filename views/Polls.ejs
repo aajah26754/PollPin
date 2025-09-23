@@ -26,6 +26,7 @@
 
         }
     </style>
+    
 </head>
 
 <body>
@@ -47,6 +48,7 @@
     addOptionButton = document.getElementById("addOptionButton");
     createPollButton = document.getElementById("createPollButton");
     pollDiv = document.getElementById("pollDiv");
+    newPollOptionDiv = document.getElementById("newPollOptionDiv");
     currentOptionCount = 1;
 
     function addOption() {
@@ -118,6 +120,19 @@
         currentOptionCount = 1;
         newPollOptionDiv.innerHTML = '<input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>'; // reset number of option text fields
     }
+</script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    socket.on('connect', () => console.log('Connected to PollPin socket'));
+    socket.on('serverAlive', (msg) => console.log('serverAlive', msg));
+    socket.on('classData', (classroomData) => {
+        console.log('classData:', classroomData);
+        window.currentClassData = classroomData;
+    });
+    socket.on('disconnect', (reason) => console.log('socket disconnected', reason));
+    socket.on('connect_error', (err) => console.log('socket connect_error', err));
 </script>
 
 </html>

@@ -1,9 +1,40 @@
+/*
+HOW TO SET UP
+
+run {
+    npm i
+    node app
+    }
+go to localhost:3000
+
+download formbar dev branch from https://github.com/csmith1188/Formbar.js/tree/DEV
+in formbar window, run {
+    npm i;
+    cp .env-template .env;
+    npm run init-db;
+    node app;
+    }
+go to localhost:420
+log in (or register)
+
+*/
+
+/* TODO:
+[X] Send user permissions, formbar_id, and username from classroomData to Polls.ejs (so it can be used for the db)
+[] Make a page that displays the relevant data for the current class and polls via websockets
+[] Only users with the correct permissions can create polls
+*/
+
 let express = require('express');
 let app = express();
+
+const http = require('http').createServer(app);
 const sqlite3 = require('sqlite3');
+const { Server } = require('socket.io');
+const ioServer = new Server(http);
 const { io } = require('socket.io-client');
-const FORMBAR_URL = 'localhost:420'  //'http://172.16.3.159:420/';
-const API_KEY = '81bf3b7cb7c2d41a7f34b7e5c29247fe07f4f74b6205efc468064efcf11fee82';
+const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
+const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d'; // PUT YOUR API KEY HERE FOR IT TO WORK
 port = 3000;
 const socket = io(FORMBAR_URL, {
     auth: {
@@ -22,6 +53,16 @@ const db = new sqlite3.Database('data/database.db', (err) => {
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+let latestClassData = null;
+
+ioServer.on('connection', (browserSocket) => {
+    console.log('Browser connected to PollPin socket');
+    browserSocket.emit('serverAlive', { ok: true, ts: Date.now() });
+    if (latestClassData) {
+        browserSocket.emit('classData', latestClassData);
+    }
+});
 
 socket.on('connect', () => {
     console.log('Connected');
@@ -48,6 +89,9 @@ socket.on('joinClass', (response) => {
 });
 
 socket.on('classUpdate', (classroomData) => {
+    // Forward to connected browsers via our own Socket.IO server
+    latestClassData = classroomData;
+    ioServer.emit('classData', latestClassData);
     console.log(classroomData);
 });
 
@@ -55,6 +99,8 @@ app.get('/', function (req, res) {
     res.render('Polls');
 });
 
+
 app.listen(port, () => {
     console.log(`Listening on ${port}`)
 });
+
