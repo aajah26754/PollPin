@@ -20,13 +20,16 @@ log in (or register)
 */
 
 /* TODO:
-[] Send user permissions, formbar_id, and username from classroomData to Polls.ejs (so it can be used for the db)
+[X] Send user permissions, formbar_id, and username from classroomData to Polls.ejs (so it can be used for the db)
 [] Make a page that displays the relevant data for the current class and polls via websockets
 [] Only users with the correct permissions can create polls
 */
 
 let express = require('express');
 let app = express();
+const http = require('http').createServer(app);
+const { Server } = require('socket.io');
+const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
 const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d'; // Your API key here
@@ -38,6 +41,16 @@ const socket = io(FORMBAR_URL, {
 });
 
 app.set('view engine', 'ejs');
+
+let latestClassData = null;
+
+ioServer.on('connection', (browserSocket) => {
+    console.log('Browser connected to PollPin socket');
+    browserSocket.emit('serverAlive', { ok: true, ts: Date.now() });
+    if (latestClassData) {
+        browserSocket.emit('classData', latestClassData);
+    }
+});
 
 socket.on('connect', () => {
     console.log('Connected');
@@ -64,6 +77,9 @@ socket.on('joinClass', (response) => {
 });
 
 socket.on('classUpdate', (classroomData) => {
+    // Forward to connected browsers via our own Socket.IO server
+    latestClassData = classroomData;
+    ioServer.emit('classData', latestClassData);
     console.log(classroomData);
 });
 
@@ -71,5 +87,5 @@ app.get('/', function (req, res) {
     res.render('Polls');
 });
 
-app.listen(3000);
+http.listen(3000);
 
