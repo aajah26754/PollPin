@@ -27,20 +27,32 @@ log in (or register)
 
 let express = require('express');
 let app = express();
+
 const http = require('http').createServer(app);
+const sqlite3 = require('sqlite3');
 const { Server } = require('socket.io');
 const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
-const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d'; // Your API key here
-
+const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d'; // PUT YOUR API KEY HERE FOR IT TO WORK
+port = 3000;
 const socket = io(FORMBAR_URL, {
-    extraHeaders: {
-        api: API_KEY
+    auth: {
+        token: API_KEY
+    }
+});
+
+const db = new sqlite3.Database('data/database.db', (err) => {
+    if (err) {
+        console.error('Error opening database ' + err.message);
+    } else {
+        console.log('Connected to the database.');
     }
 });
 
 app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
 let latestClassData = null;
 
@@ -87,5 +99,8 @@ app.get('/', function (req, res) {
     res.render('Polls');
 });
 
-http.listen(3000);
+
+app.listen(port, () => {
+    console.log(`Listening on ${port}`)
+});
 
