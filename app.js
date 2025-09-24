@@ -25,6 +25,7 @@ log in (or register)
 [] Only users with the correct permissions can create polls
 */
 
+require('dotenv').config();
 let express = require('express');
 let app = express();
 
@@ -34,7 +35,7 @@ const { Server } = require('socket.io');
 const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
-const API_KEY = '81bf3b7cb7c2d41a7f34b7e5c29247fe07f4f74b6205efc468064efcf11fee82'; // PUT YOUR API KEY HERE FOR IT TO WORK
+const API_KEY = process.env.API_KEY;
 const jwt = require('jsonwebtoken')
 const session = require('express-session')
 
