@@ -35,6 +35,14 @@ const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
 const API_KEY = '81bf3b7cb7c2d41a7f34b7e5c29247fe07f4f74b6205efc468064efcf11fee82'; // PUT YOUR API KEY HERE FOR IT TO WORK
+const jwt = require('jsonwebtoken')
+const session = require('express-session')
+
+const FBJS_URL = 'https://formbeta.yorktechapps.com'
+const THIS_URL = 'http://localhost:3000/login'
+const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth' 
+
+
 port = 3000;
 const socket = io(FORMBAR_URL, {
     extraHeaders: {
@@ -97,12 +105,63 @@ socket.on('joinClass', (response) => {
     }
 });
 
-app.get('/', function (req, res) {
-    res.render('Polls');
+app.use(session({
+    secret: 'ohnose!',
+    resave: false,
+    saveUninitialized: false
+}))
+
+function isAuthenticated(req, res, next) {
+    console.log("Checking Auth")
+    if (req.session.user) next()
+    else res.redirect(`/login?redirectURL=${THIS_URL}`)
+}
+
+
+app.get('/login', (req, res) => {
+    if (req.query.token) {
+        let tokenData = jwt.decode(req.query.token)
+        req.session.token = tokenData
+        req.session.user = tokenData.displayName
+        res.redirect('/')
+        db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
+            if (err) {
+                console.log(err)
+                res.send("There big bad error:\n" + err)
+            } else if (!row) {
+                db.run('INSERT INTO users(fb_name) VALUES(?);', [req.session.user], (err) => {
+                    if (err) {
+                        console.log(err)
+                        res.send("Database error:\n" + err)
+                    }
+                });
+            }
+        });
+    } else {
+        // If not logged in, redirect to OAuth provider
+        if (!req.session.user) {
+            return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
+        }
+        // Otherwise, show the user value for debugging
+        console.log(req.session.user)
+        res.redirect('/')
+    }
 });
 
+app.get('/', (req, res) => {
+    res.render('index');
+})
+
+app.get('/Polls', isAuthenticated, (req, res) => {
+    try {
+        res.render('Polls', { user: req.session.user })
+        console.log(req.session.user)
+
+    } catch (error) {
+        console.error('Error rendering Polls page: ', error)
+    }
+});
 
 http.listen(port, () => {
     console.log(`Listening on ${port}`)
 });
-
