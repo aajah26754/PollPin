@@ -130,7 +130,7 @@ app.get('/login', (req, res) => {
                 console.log(err)
                 res.send("There big bad error:\n" + err)
             } else if (!row) {
-                db.run('INSERT INTO users(fb_name) VALUES(?);', [req.session.user], (err) => {
+                db.run('INSERT INTO users(fb_name, fb_id) VALUES(?, ?);', [req.session.user, tokenData.id], (err) => {
                     if (err) {
                         console.log(err)
                         res.send("Database error:\n" + err)
