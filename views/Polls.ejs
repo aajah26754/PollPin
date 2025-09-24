@@ -7,14 +7,47 @@
     <title>Document</title>
     <style>
         #pollDiv {
-            border: 1px solid black;
             overflow-y: auto;
             padding: 10px;
             width: 200px;
         }
+        #topButtons {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+        }
+        #pollCreateOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            z-index: 1001;
+        }
+        #pollCreatePanel {
+            background: #ffffff;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        #pollCreateHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        #pollCreateContent {
+            padding: 16px;
+        }
 
         #newPollOptionDiv {
-            border: 1px solid black;
         }
 
         .pollChoices {
@@ -24,12 +57,6 @@
             margin: 0;
             overflow: auto;
         }
-        #classDataToggle {
-            position: fixed;
-            top: 12px;
-            right: 12px;
-            z-index: 1000;
-        }
         #classDataOverlay {
             position: fixed;
             top: 0;
@@ -38,7 +65,7 @@
             height: 100vh;
             background: rgba(0, 0, 0, 0.4);
             display: none;
-            z-index: 999;
+            z-index: 1001;
         }
         #classDataPanel {
             background: #ffffff;
@@ -68,19 +95,32 @@
 </head>
 
 <body>
-    <input type="text" placeholder="Poll Name" id="NewPollName"><br><br>
-    <div id="newPollOptionDiv">
-        <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
+    <div id="topButtons">
+        <button id="pollCreateToggle">Create poll</button>
+        <button id="classDataToggle">View data</button>
     </div>
-    <button id="addOptionButton" onclick="addOption()">add option</button>
-    <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
 
-    <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
+    <div id="pollCreateOverlay">
+        <div id="pollCreatePanel">
+            <div id="pollCreateHeader">
+                <h3 style="margin:0;">Create a poll</h3>
+                <button id="pollCreateClose">Close</button>
+            </div>
+            <div id="pollCreateContent">
+                <input type="text" placeholder="Poll Name" id="NewPollName"><br><br>
+                <div id="newPollOptionDiv">
+                    <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
+                </div>
+                <button id="addOptionButton" onclick="addOption()">add option</button>
+                <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
+                <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
+            </div>
+        </div>
+    </div>
 
 
     <div id="pollDiv">
     </div>
-    <button id="classDataToggle">View data</button>
     <div id="classDataOverlay">
         <div id="classDataPanel">
             <div id="classDataHeader">
@@ -100,6 +140,7 @@
     pollDiv = document.getElementById("pollDiv");
     newPollOptionDiv = document.getElementById("newPollOptionDiv");
     currentOptionCount = 1;
+    window.pollCounter = window.pollCounter || 0;
 
     function addOption() {
         let newOption = document.createElement("input");
@@ -124,6 +165,8 @@
     function fillPoll() {
         let pollName = arguments[0];
         let options = arguments[1];
+        window.pollCounter += 1;
+        const groupName = `poll_${window.pollCounter}`;
         let pollHTML = document.createElement("div");
         let pollTitle = document.createElement("h3");
         pollTitle.innerText = pollName;
@@ -134,7 +177,7 @@
             let optionItem = document.createElement("li");
             let optionInput = document.createElement("input");
             optionInput.type = "radio";
-            optionInput.name = pollName;
+            optionInput.name = groupName;
             optionInput.value = options[i];
             optionItem.appendChild(optionInput);
             optionItem.appendChild(document.createTextNode(options[i]));
@@ -143,6 +186,9 @@
         }
         pollHTML.appendChild(optionList);
         pollDiv.appendChild(pollHTML);
+
+        // Allow changing answers and voting in multiple polls simultaneously
+        // Each poll's inputs share a unique name (pollName), so only one option per poll can be selected at a time by default.
     }
 
     function newPoll() {
@@ -202,12 +248,32 @@
         if (isOpen) {
             classDataOverlay.style.display = 'none';
         } else {
+            // Close poll creator if open
+            pollCreateOverlay.style.display = 'none';
             renderClassData();
             classDataOverlay.style.display = 'block';
         }
     });
     classDataClose.addEventListener('click', () => {
         classDataOverlay.style.display = 'none';
+    });
+
+    const pollCreateToggle = document.getElementById('pollCreateToggle');
+    const pollCreateOverlay = document.getElementById('pollCreateOverlay');
+    const pollCreateClose = document.getElementById('pollCreateClose');
+
+    pollCreateToggle.addEventListener('click', () => {
+        const isOpen = pollCreateOverlay.style.display === 'block';
+        if (isOpen) {
+            pollCreateOverlay.style.display = 'none';
+        } else {
+            // Close class data if open
+            classDataOverlay.style.display = 'none';
+            pollCreateOverlay.style.display = 'block';
+        }
+    });
+    pollCreateClose.addEventListener('click', () => {
+        pollCreateOverlay.style.display = 'none';
     });
 </script>
 
