@@ -21,7 +21,7 @@ log in (or register)
 
 /* TODO:
 [X] Send user permissions, formbar_id, and username from classroomData to Polls.ejs (so it can be used for the db)
-[] Make a page that displays the relevant data for the current class and polls via websockets
+[X] Make a page that displays the relevant data for the current class and polls via websockets
 [] Only users with the correct permissions can create polls
 */
 
@@ -34,11 +34,11 @@ const { Server } = require('socket.io');
 const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
-const API_KEY = 'aa3663be018501ad55c4c1c6ef1ca0073704586be7f11c74849daf3fed035f6d'; // PUT YOUR API KEY HERE FOR IT TO WORK
+const API_KEY = '746ed7eea135dc837a60171b2c8cd4c5c6b14fd4fd5935d99808996150671dae'; // PUT YOUR API KEY HERE FOR IT TO WORK
 port = 3000;
 const socket = io(FORMBAR_URL, {
-    auth: {
-        token: API_KEY
+    extraHeaders: {
+        api: API_KEY
     }
 });
 
@@ -64,19 +64,28 @@ ioServer.on('connection', (browserSocket) => {
     }
 });
 
-socket.on('connect', () => {
-    console.log('Connected');
-    socket.emit('getActiveClass');
-});
-
 socket.on('classUpdate', (newClassId) => {
     console.log(`The user is currently in the class with id ${newClassId}`);
 });
 
+socket.on('classUpdate', (classroomData) => {
+    // Forward to connected browsers via our own Socket.IO server
+    latestClassData = classroomData;
+    ioServer.emit('classData', latestClassData);
+    console.log(classroomData);
+});
+
+socket.on('connect', () => {
+    console.log('Connected');
+    socket.emit('getActiveClass');
+    socket.emit('classUpdate')
+});
+
 let classId = 1; // Class Id here
-let classCode = 'vmnt' // If you're not already in the classroom, you can join it by using the class code.
+let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
 socket.emit('joinClass', classId);
 socket.on('joinClass', (response) => {
+    console.log('joinClass', response);
     // If joining the class is successful, it will return true.
     if (response == true) {
         console.log('Successfully joined class')
@@ -88,19 +97,12 @@ socket.on('joinClass', (response) => {
     }
 });
 
-socket.on('classUpdate', (classroomData) => {
-    // Forward to connected browsers via our own Socket.IO server
-    latestClassData = classroomData;
-    ioServer.emit('classData', latestClassData);
-    console.log(classroomData);
-});
-
 app.get('/', function (req, res) {
     res.render('Polls');
 });
 
 
-app.listen(port, () => {
+http.listen(port, () => {
     console.log(`Listening on ${port}`)
 });
 
