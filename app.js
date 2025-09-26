@@ -19,12 +19,6 @@ log in (or register)
 
 */
 
-/* TODO:
-[X] Send user permissions, formbar_id, and username from classroomData to Polls.ejs (so it can be used for the db)
-[X] Make a page that displays the relevant data for the current class and polls via websockets
-[] Only users with the correct permissions can create polls
-*/
-
 require('dotenv').config();
 let express = require('express');
 let app = express();
@@ -38,10 +32,8 @@ const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com'
 const API_KEY = process.env.API_KEY;
 const jwt = require('jsonwebtoken')
 const session = require('express-session')
-
-const FBJS_URL = 'https://formbeta.yorktechapps.com'
 const THIS_URL = 'http://localhost:3000/login'
-const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth' 
+const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth'
 
 
 port = 3000;
@@ -124,6 +116,7 @@ app.get('/login', (req, res) => {
         let tokenData = jwt.decode(req.query.token)
         req.session.token = tokenData
         req.session.user = tokenData.displayName
+        req.session.permissions = tokenData.permissions
         res.redirect('/')
         db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
             if (err) {
@@ -155,7 +148,7 @@ app.get('/', (req, res) => {
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user })
+        res.render('Polls', { user: req.session.user, permissions: req.session.permissions })
         console.log(req.session.user)
 
     } catch (error) {
