@@ -163,6 +163,19 @@ app.get('/Polls', isAuthenticated, (req, res) => {
     }
 });
 
+app.get('/profile', isAuthenticated, (req, res) => {
+    db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, user) => {
+        if (err) {
+            console.error('Error fetching user data: ', err);
+            return res.status(500).send('Internal Server Error');
+        } else {
+            console.log('User data fetched successfully: ', user);
+        }
+
+        res.render('profile', { user });
+    });
+});
+
 http.listen(port, () => {
     console.log(`Listening on ${port}`)
 });
