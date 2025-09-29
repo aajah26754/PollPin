@@ -168,7 +168,7 @@ app.get('/profile', isAuthenticated, (req, res) => {
             console.log('User data fetched successfully: ', user);
         }
 
-        res.render('profile', { user });
+        res.render('profile', { user, permissions: req.session.permissions });
     });
 });
 
