@@ -169,6 +169,18 @@ app.get('/profile', isAuthenticated, (req, res) => {
     });
 });
 
+app.get('/classes', isAuthenticated, (req, res) => {
+    db.all('SELECT className FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
+        if (err) {
+            console.error('Error fetching user data: ', err);
+            return res.status(500).send('Internal Server Error');
+        }
+        console.log('Classes fetched successfully: ', classes);
+        res.render('classes', { classes });
+    });
+
+});
+
 http.listen(port, () => {
     console.log(`Listening on ${port}`)
 });
