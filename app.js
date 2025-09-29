@@ -147,13 +147,16 @@ app.get('/', (req, res) => {
 })
 
 app.get('/Polls', isAuthenticated, (req, res) => {
-    try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions })
-        console.log(req.session.user)
+    db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, user) => {
+        if (err) {
+            console.error('Error fetching user data: ', err);
+            return res.status(500).send('Internal Server Error');
+        } else {
+            console.log('User data fetched successfully: ', user);
+        }
 
-    } catch (error) {
-        console.error('Error rendering Polls page: ', error)
-    }
+        res.render('Polls', { user, permissions: req.session.permissions });
+    });
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
