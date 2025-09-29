@@ -11,6 +11,7 @@
             padding: 10px;
             width: 200px;
         }
+
         #topButtons {
             position: fixed;
             top: 12px;
@@ -19,6 +20,7 @@
             gap: 8px;
             z-index: 1000;
         }
+
         #pollCreateOverlay {
             position: fixed;
             top: 0;
@@ -29,13 +31,15 @@
             display: none;
             z-index: 1001;
         }
+
         #pollCreatePanel {
             background: #ffffff;
             width: 100%;
             height: 100%;
             overflow: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
         }
+
         #pollCreateHeader {
             display: flex;
             align-items: center;
@@ -43,6 +47,7 @@
             padding: 12px 16px;
             border-bottom: 1px solid #e5e7eb;
         }
+
         #pollCreateContent {
             padding: 16px;
         }
@@ -54,6 +59,7 @@
             margin: 0;
             overflow: auto;
         }
+
         #classDataOverlay {
             position: fixed;
             top: 0;
@@ -64,13 +70,15 @@
             display: none;
             z-index: 1001;
         }
+
         #classDataPanel {
             background: #ffffff;
             width: 100%;
             height: 100%;
             overflow: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
         }
+
         #classDataHeader {
             display: flex;
             align-items: center;
@@ -78,9 +86,11 @@
             padding: 12px 16px;
             border-bottom: 1px solid #e5e7eb;
         }
+
         #classDataContent {
             padding: 16px;
         }
+
         #classDataPre {
             white-space: pre-wrap;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -88,50 +98,53 @@
             line-height: 1.5;
         }
     </style>
-    
+
 </head>
 
 <body>
-    <div id="topButtons">
-        <button id="pollCreateToggle">Create poll</button>
-        <button id="classDataToggle">View data</button>
-    </div>
+    <% if ((permissions || 0)>= 3) { %>
+        <div id="topButtons">
+            <button id="pollCreateToggle">Create poll</button>
+            <button id="classDataToggle">View data</button>
+        </div>
+        <% } %>
 
-    <div id="pollCreateOverlay">
-        <div id="pollCreatePanel">
-            <div id="pollCreateHeader">
-                <h3 style="margin:0;">Create a poll</h3>
-                <button id="pollCreateClose">Close</button>
-            </div>
-            <div id="pollCreateContent">
-                <input type="text" placeholder="Poll Name" id="NewPollName"><br><br>
-                <div id="newPollOptionDiv">
-                    <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
+            <div id="pollCreateOverlay">
+                <div id="pollCreatePanel">
+                    <div id="pollCreateHeader">
+                        <h3 style="margin:0;">Create a poll</h3>
+                        <button id="pollCreateClose">Close</button>
+                    </div>
+                    <div id="pollCreateContent">
+                        <input type="text" placeholder="Poll Name" id="NewPollName"><br><br>
+                        <div id="newPollOptionDiv">
+                            <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
+                        </div>
+                        <button id="addOptionButton" onclick="addOption()">add option</button>
+                        <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
+                        <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
+                    </div>
                 </div>
-                <button id="addOptionButton" onclick="addOption()">add option</button>
-                <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
-                <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
             </div>
-        </div>
-    </div>
 
 
-    <div id="pollDiv">
-    </div>
-    <div id="classDataOverlay">
-        <div id="classDataPanel">
-            <div id="classDataHeader">
-                <h3 style="margin:0;">Class data</h3>
-                <button id="classDataClose">Close</button>
+            <div id="pollDiv">
             </div>
-            <div id="classDataContent">
-                <pre id="classDataPre">No data received yet.</pre>
+            <div id="classDataOverlay">
+                <div id="classDataPanel">
+                    <div id="classDataHeader">
+                        <h3 style="margin:0;">Class data</h3>
+                        <button id="classDataClose">Close</button>
+                    </div>
+                    <div id="classDataContent">
+                        <pre id="classDataPre">No data received yet.</pre>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 </body>
 <script>
-
+    window.currentUser = { name: <% - JSON.stringify(user || null) %>, permissions: <% - JSON.stringify(permissions || null) %> };
+    console.log('currentUser', window.currentUser);
     addOptionButton = document.getElementById("addOptionButton");
     createPollButton = document.getElementById("createPollButton");
     pollDiv = document.getElementById("pollDiv");
@@ -240,17 +253,19 @@
         }
     }
 
-    classDataToggle.addEventListener('click', () => {
-        const isOpen = classDataOverlay.style.display === 'block';
-        if (isOpen) {
-            classDataOverlay.style.display = 'none';
-        } else {
-            // Close poll creator if open
-            pollCreateOverlay.style.display = 'none';
-            renderClassData();
-            classDataOverlay.style.display = 'block';
-        }
-    });
+    if (classDataToggle) {
+        classDataToggle.addEventListener('click', () => {
+            const isOpen = classDataOverlay.style.display === 'block';
+            if (isOpen) {
+                classDataOverlay.style.display = 'none';
+            } else {
+                // Close poll creator if open
+                pollCreateOverlay.style.display = 'none';
+                renderClassData();
+                classDataOverlay.style.display = 'block';
+            }
+        });
+    }
     classDataClose.addEventListener('click', () => {
         classDataOverlay.style.display = 'none';
     });
@@ -259,16 +274,18 @@
     const pollCreateOverlay = document.getElementById('pollCreateOverlay');
     const pollCreateClose = document.getElementById('pollCreateClose');
 
-    pollCreateToggle.addEventListener('click', () => {
-        const isOpen = pollCreateOverlay.style.display === 'block';
-        if (isOpen) {
-            pollCreateOverlay.style.display = 'none';
-        } else {
-            // Close class data if open
-            classDataOverlay.style.display = 'none';
-            pollCreateOverlay.style.display = 'block';
-        }
-    });
+    if (pollCreateToggle) {
+        pollCreateToggle.addEventListener('click', () => {
+            const isOpen = pollCreateOverlay.style.display === 'block';
+            if (isOpen) {
+                pollCreateOverlay.style.display = 'none';
+            } else {
+                // Close class data if open
+                classDataOverlay.style.display = 'none';
+                pollCreateOverlay.style.display = 'block';
+            }
+        });
+    }
     pollCreateClose.addEventListener('click', () => {
         pollCreateOverlay.style.display = 'none';
     });
