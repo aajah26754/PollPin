@@ -121,7 +121,7 @@
                             <input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>
                         </div>
                         <button id="addOptionButton" onclick="addOption()">add option</button>
-                        <button id="addOptionButton" onclick="removeOption()">remove option</button><br><br>
+                        <button id="removeOptionButton" onclick="removeOption()">remove option</button><br><br>
                         <button id="createPollButton" onclick="newPoll()">CREATE POLL</button>
                     </div>
                 </div>
@@ -143,7 +143,7 @@
             </div>
 </body>
 <script>
-    window.currentUser = { name: <% - JSON.stringify(user || null) %>, permissions: <% - JSON.stringify(permissions || null) %> };
+    window.currentUser = <%- JSON.stringify({ name: (user || null), permissions: (permissions || null) }) %>;
     console.log('currentUser', window.currentUser);
     addOptionButton = document.getElementById("addOptionButton");
     createPollButton = document.getElementById("createPollButton");
@@ -151,8 +151,13 @@
     newPollOptionDiv = document.getElementById("newPollOptionDiv");
     currentOptionCount = 1;
     window.pollCounter = window.pollCounter || 0;
+    const MAX_OPTIONS = 9;
 
     function addOption() {
+        if (currentOptionCount >= MAX_OPTIONS) {
+            alert("You can add at most 9 options.");
+            return;
+        }
         let newOption = document.createElement("input");
         newOption.type = "text";
         newOption.placeholder = "Poll Option";
