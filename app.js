@@ -28,13 +28,12 @@ const sqlite3 = require('sqlite3');
 const { Server } = require('socket.io');
 const ioServer = new Server(http);
 const { io } = require('socket.io-client');
-const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
+const FORMBAR_URL = 'http://localhost:420';
 const API_KEY = process.env.API_KEY;
-const jwt = require('jsonwebtoken')
-const session = require('express-session')
-const THIS_URL = 'http://localhost:3000/login'
-const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth'
-
+const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const THIS_URL = 'http://localhost:3000/login';
+const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth';
 
 port = 3000;
 const socket = io(FORMBAR_URL, {
@@ -79,22 +78,20 @@ socket.on('classUpdate', (classroomData) => {
 socket.on('connect', () => {
     console.log('Connected');
     socket.emit('getActiveClass');
-    socket.emit('classUpdate')
+    socket.emit('classUpdate');
 });
 
 let classId = 1; // Class Id here
-let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
+let classCode = 'rne5'; // If you're not already in the classroom, you can join it by using the class code.
 socket.emit('joinClass', classId);
 socket.on('joinClass', (response) => {
     console.log('joinClass', response);
-    // If joining the class is successful, it will return true.
-    if (response == true) {
-        console.log('Successfully joined class')
-        socket.emit('classUpdate')
+    if (response === true) {
+        console.log('Successfully joined class');
+        socket.emit('classUpdate');
     } else {
-        // If not, try to join the classroom with the class code.
         socket.emit('joinRoom', classCode);
-        console.log('Failed to join class: ' + response)
+        console.log('Failed to join class: ' + response);
     }
 });
 
@@ -102,33 +99,50 @@ app.use(session({
     secret: 'ohnose!',
     resave: false,
     saveUninitialized: false
-}))
+}));
 
 function isAuthenticated(req, res, next) {
-    console.log("Checking Auth")
-    if (req.session.user) next()
-    else res.redirect(`/login?redirectURL=${THIS_URL}`)
+    console.log("Checking Auth");
+    if (req.session.user) next();
+    else res.redirect(`/login?redirectURL=${THIS_URL}`);
 }
 
-
+// ------------------- FIXED LOGIN ROUTE -------------------
 app.get('/login', (req, res) => {
     if (req.query.token) {
-        let tokenData = jwt.decode(req.query.token)
-        req.session.token = tokenData
-        req.session.user = tokenData.displayName
-        req.session.permissions = tokenData.permissions
-        res.redirect('/')
-        db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
+        let tokenData = jwt.decode(req.query.token);
+
+        // Map JWT 'id' to 'fb_id' for consistency
+        req.session.token = tokenData;
+        req.session.user = {
+            fb_id: tokenData.id,           // <- Use 'id' from JWT as 'fb_id'
+            name: tokenData.displayName,
+            permissions: tokenData.permissions
+        };
+
+        // Check if user exists in DB
+        db.get('SELECT * FROM users WHERE fb_name=?', [tokenData.displayName], (err, row) => {
             if (err) {
-                console.log(err)
-                res.send("There big bad error:\n" + err)
-            } else if (!row) {
-                db.run('INSERT INTO users(fb_name, fb_id, permissions) VALUES(?, ?, ?);', [req.session.user, tokenData.id, tokenData.permissions], (err) => {
-                    if (err) {
-                        console.log(err)
-                        res.send("Database error:\n" + err)
+                console.log(err);
+                return res.status(500).send("Database error:\n" + err);
+            }
+            if (!row) {
+                // Insert user if not found
+                db.run(
+                    'INSERT INTO users(fb_name, fb_id, permissions) VALUES(?, ?, ?)',
+                    [tokenData.displayName, tokenData.id, tokenData.permissions],
+                    (err) => {
+                        if (err) {
+                            console.log(err);
+                            return res.status(500).send("Database error:\n" + err);
+                        }
+                        console.log("New user inserted:", tokenData.displayName);
+                        return res.redirect('/');
                     }
-                });
+                );
+            } else {
+                console.log("User already exists:", row.fb_name);
+                return res.redirect('/');
             }
         });
     } else {
@@ -136,51 +150,58 @@ app.get('/login', (req, res) => {
         if (!req.session.user) {
             return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
         }
-        // Otherwise, show the user value for debugging
-        console.log(req.session.user)
-        res.redirect('/')
+        console.log(req.session.user);
+        res.redirect('/');
     }
 });
 
+// ------------------- ROUTES -------------------
+
 app.get('/', (req, res) => {
     res.render('index');
-})
+});
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions })
-        console.log(req.session.user)
-
+        res.render('Polls', { user: req.session.user, permissions: req.session.user.permissions });
+        console.log(req.session.user);
     } catch (error) {
-        console.error('Error rendering Polls page: ', error)
+        console.error('Error rendering Polls page: ', error);
     }
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
-    db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, user) => {
+    db.get('SELECT * FROM users WHERE fb_id=?', [req.session.user.fb_id], (err, user) => {
         if (err) {
             console.error('Error fetching user data: ', err);
             return res.status(500).send('Internal Server Error');
-        } else {
-            console.log('User data fetched successfully: ', user);
         }
-
+        console.log('User data fetched successfully: ', user);
         res.render('profile', { user });
     });
 });
 
 app.get('/classes', isAuthenticated, (req, res) => {
-    db.all('SELECT className FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
-        if (err) {
-            console.error('Error fetching user data: ', err);
-            return res.status(500).send('Internal Server Error');
-        }
-        console.log('Classes fetched successfully: ', classes);
-        res.render('classes', { classes });
-    });
+    console.log("Fetching classes for fb_id:", req.session.user.fb_id);
 
+    db.all(
+        'SELECT className FROM Classes WHERE fb_id = ?',
+        [String(req.session.user.fb_id)],   // fb_id from login session
+        (err, classes) => {
+            if (err) {
+                console.error('Error fetching user classes:', err);
+                return res.status(500).send('Internal Server Error');
+            }
+
+            console.log("User classes:", classes);
+            res.render('classes', { classes });
+        }
+    );
 });
 
+
+
+// ------------------- START SERVER -------------------
 http.listen(port, () => {
-    console.log(`Listening on ${port}`)
+    console.log(`Listening on ${port}`);
 });
