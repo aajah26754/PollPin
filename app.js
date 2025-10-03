@@ -82,6 +82,17 @@ socket.on('connect', () => {
     socket.emit('classUpdate')
 });
 
+socket.on('pinPoll', (data) => {
+    if (data.pollPinned == true && data.poll) {
+        db.run('UPDATE Classes SET pollPrompt=? WHERE id=?', [data.poll.prompt, data.id]);
+    }
+
+    console.log('pinPoll', data);
+    latestClassData = data;
+    ioServer.emit('classData', latestClassData);
+    console.log('pinnedPoll', data);
+});
+
 let classId = 1; // Class Id here
 let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
 socket.emit('joinClass', classId);
@@ -148,7 +159,7 @@ app.get('/', (req, res) => {
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions })
+        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls })
         console.log(req.session.user)
 
     } catch (error) {
