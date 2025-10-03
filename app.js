@@ -69,7 +69,7 @@ socket.on('classUpdate', (newClassId) => {
 });
 
 socket.on('classUpdate', (classroomData) => {
-    // Forward to connected browsers via our own Socket.IO server
+
     latestClassData = classroomData;
     ioServer.emit('classData', latestClassData);
     console.log(classroomData);
@@ -82,7 +82,7 @@ socket.on('connect', () => {
 });
 
 let classId = 1; // Class Id here
-let classCode = 'rne5'; // If you're not already in the classroom, you can join it by using the class code.
+let classCode = 'rne5'; // If you're not already in the class, you can join it by using the class code.
 socket.emit('joinClass', classId);
 socket.on('joinClass', (response) => {
     console.log('joinClass', response);
@@ -107,15 +107,12 @@ function isAuthenticated(req, res, next) {
     else res.redirect(`/login?redirectURL=${THIS_URL}`);
 }
 
-// ------------------- FIXED LOGIN ROUTE -------------------
 app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token);
-
-        // Map JWT 'id' to 'fb_id' for consistency
         req.session.token = tokenData;
         req.session.user = {
-            fb_id: tokenData.id,           // <- Use 'id' from JWT as 'fb_id'
+            fb_id: tokenData.id,         
             name: tokenData.displayName,
             permissions: tokenData.permissions
         };
@@ -146,7 +143,6 @@ app.get('/login', (req, res) => {
             }
         });
     } else {
-        // If not logged in, redirect to OAuth provider
         if (!req.session.user) {
             return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
         }
@@ -154,8 +150,6 @@ app.get('/login', (req, res) => {
         res.redirect('/');
     }
 });
-
-// ------------------- ROUTES -------------------
 
 app.get('/', (req, res) => {
     res.render('index');
@@ -199,9 +193,6 @@ app.get('/classes', isAuthenticated, (req, res) => {
     );
 });
 
-
-
-// ------------------- START SERVER -------------------
 http.listen(port, () => {
     console.log(`Listening on ${port}`);
 });
