@@ -30,10 +30,12 @@ const ioServer = new Server(http);
 const { io } = require('socket.io-client');
 const FORMBAR_URL = 'http://localhost:420';
 const API_KEY = process.env.API_KEY;
-const jwt = require('jsonwebtoken');
-const session = require('express-session');
-const THIS_URL = 'http://localhost:3000/login';
-const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth';
+const jwt = require('jsonwebtoken')
+const session = require('express-session')
+const THIS_URL = 'http://localhost:3000/login'
+const AUTH_URL = 'http://localhost:420/oauth'
+const FBJS_URL = 'https://formbeta.yorktechapps.com';
+
 
 port = 3000;
 const socket = io(FORMBAR_URL, {
@@ -106,6 +108,28 @@ function isAuthenticated(req, res, next) {
     if (req.session.user) next();
     else res.redirect(`/login?redirectURL=${THIS_URL}`);
 }
+
+
+app.get('/testing', isAuthenticated, async (req, res) => {
+    console.log("testing")
+
+    try {
+        const response = await fetch(`${FBJS_URL}/api/me`, {
+            method: 'GET',
+            headers: {
+                'API': API_KEY,
+                'Authorization': `Bearer ${req.query.token || req.session.rawToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        res.send(data);
+
+    } catch (error) {
+        res.send(error.message);
+    }
+});
 
 app.get('/login', (req, res) => {
     if (req.query.token) {
