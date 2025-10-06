@@ -102,7 +102,7 @@
 </head>
 
 <body>
-    <% if ((permissions || 0)>= 2) { %>
+    <% if ((permissions || 0)>= 0) { %>
         <div id="topButtons">
             <button id="pollCreateToggle">Create poll</button>
             <button id="classDataToggle">View data</button>
@@ -143,8 +143,8 @@
             </div>
 </body>
 <script>
-    window.currentUser = <%- JSON.stringify({ name: (user || null), permissions: (permissions || null) }) %>;
-    console.log('currentUser', window.currentUser);
+    window.currentUser = <% - JSON.stringify({ name: (user || null), permissions: (permissions || null) }) %>
+        console.log('currentUser', window.currentUser);
     addOptionButton = document.getElementById("addOptionButton");
     createPollButton = document.getElementById("createPollButton");
     pollDiv = document.getElementById("pollDiv");
@@ -241,6 +241,7 @@
         console.log('classData:', classroomData);
         window.currentClassData = classroomData;
         renderClassData();
+        ClassDataPoll();
     });
     socket.on('disconnect', (reason) => console.log('socket disconnected', reason));
     socket.on('connect_error', (err) => console.log('socket connect_error', err));
@@ -257,6 +258,56 @@
             classDataPre.textContent = String(window.currentClassData);
         }
     }
+
+    function ClassDataPoll() {
+        const data = window.currentClassData;
+        if (!pollDiv) return;
+        pollDiv.innerHTML = '';
+        if (!data || !data.poll || data.poll.status !== true) {
+            const msg = document.createElement('div');
+            msg.textContent = 'No active poll available.';
+            pollDiv.appendChild(msg);
+            return;
+        }
+        const prompt = data.poll.prompt || 'Poll';
+        const responsesObj = data.poll.responses || {};
+        const responses = Object.keys(responsesObj);
+        if (!responses.length) {
+            const msg = document.createElement('div');
+            msg.textContent = 'No responses configured.';
+            pollDiv.appendChild(msg);
+            return;
+        }
+        fillPoll(prompt, responses);
+
+        const pinButton = document.createElement('button');
+        pinButton.textContent = 'Pin';
+        pinButton.addEventListener('click', () => {
+            pinPoll();
+        });
+        pinButton.id = 'pinPollButton';
+        pinButton.style.marginTop = '8px';
+        pollDiv.appendChild(pinButton);
+    }
+
+    function pinPoll() {
+        socket.emit('testEvent', 'Hello from polls.ejs');
+        const data = window.currentClassData;
+        pinPollPrompt = data.poll.prompt;
+        pinPollResponses = Object.keys(data.poll.responses);
+        if (!data || !data.poll || data.poll.status !== true) {
+            alert('No active poll available.');
+            return;
+        } else if (data.poll.status == true) {
+            console.log(pinPollPrompt, pinPollResponses);
+            socket.emit('classData', pinPollPrompt, pinPollResponses);
+            alert('Poll pinned.');
+        }
+    }
+
+    socket.on('connect', () => {
+        console.log('Socket connected in polls.ejs');
+    });
 
     if (classDataToggle) {
         classDataToggle.addEventListener('click', () => {
@@ -293,6 +344,10 @@
     }
     pollCreateClose.addEventListener('click', () => {
         pollCreateOverlay.style.display = 'none';
+    });
+    // Render once on DOM ready in case data was already received
+    window.addEventListener('DOMContentLoaded', () => {
+        ClassDataPoll();
     });
 </script>
 
