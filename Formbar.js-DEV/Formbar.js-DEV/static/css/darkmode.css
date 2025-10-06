@@ -1,0 +1,177 @@
+* {
+	scrollbar-width: thin;
+	scrollbar-color: white transparent;
+}
+
+body {
+	background: linear-gradient(135deg, #072438 30%, #000c15 100%);
+	color: #ffffff;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	color: white !important;
+}
+
+a.link {
+	color: var(--light-blue) !important;
+	text-decoration-color: var(--light-blue) !important;
+}
+
+.headerText {
+	color: white !important;
+}
+
+h1#noPoll.textColorContent, h1#headerText.textColorContent {
+	color: var(--light-cyan) !important;
+}
+
+input {
+	background-color: #323232;
+	color: #ffffff;
+}
+
+.headBox {
+	color: #ffffff !important;
+}
+
+#select {
+	background-color: #323232;
+	color: #ffffff;
+}
+
+#colorContent {
+	background-color: #323232;
+	color: #ffffff;
+}
+
+#resTextBox {
+	background-color: #ffffff;
+	color: #000000;
+}
+
+select option {
+	color: #000000;
+}
+
+#users details{
+	color: #000000;
+}
+
+#newPasswordBox.loginBox,
+#confirmPasswordBox.loginBox,
+#tagBox {
+	border-color: #000000;
+	color: #000000;
+}
+
+#pollForm button {
+	color: white !important;
+  	border: 2px solid #fff4;
+}
+
+canvas {
+	opacity: 50%;
+}
+
+
+#loginHeader {
+	color: #fff9 !important;
+}
+
+#content {
+	background: var(--darkMode-menu-bg);
+	border: 2px solid var(--darkMode-menu-border);
+}
+
+button.pressed.revampButton:hover {
+	background: var(--darkMode-button-pressed-hover-bg) !important;
+}
+
+.revampButton {
+	background-color: var(--darkMode-button-bg);
+	border: 2px solid var(--darkMode-button-border);
+}
+
+.revampButton:not(.revampWithText):hover {
+	background-color: var(--darkMode-button-hover-bg);
+}
+
+div.helpIconInformation.revampDivAlt img {
+	filter: invert(0) !important;
+}
+
+div.helpIconInformation.revampDivAlt {
+	color: black !important;
+}
+
+.circularButton,
+.squareButton,
+.mobileCircular {
+	background-color: var(--darkMode-button-bg) !important;
+	border: 2px solid var(--darkMode-button-border) !important;
+}
+
+.circularButton:hover,
+.squareButton:hover,
+.mobileCircular:hover {
+	background-color: var(--darkMode-button-hover-bg) !important;
+}
+
+#formbarHeader {
+	background: linear-gradient(to right, #00256e, #390085);
+}
+
+#quickMenu,
+.customOptions {
+	background: var(--darkMode-menu-bg);
+	border: 2px solid var(--darkMode-menu-border);
+	color: white !important;
+}
+
+#quickMenu * {
+	color: white !important;
+}
+
+
+#users div:not(#reasons, #reasons *, #alerts *) {
+	background: var(--darkMode-menu-bg);
+	border: 2px solid var(--darkMode-menu-border);
+}
+
+.revampDiv {
+	background: var(--darkMode-menu-bg);
+	border: 2px solid var(--darkMode-menu-border);
+}
+
+.revampDivAlt {
+	border: 2px solid var(--lightMode-menu-border);
+	background: var(--lightMode-menu-bg);
+}
+
+
+#news section {
+	background: var(--darkMode-menu-bg);
+	border: 2px solid var(--darkMode-menu-border);
+}
+
+#startClass {
+	color: black !important;
+	background-color: rgb(39, 164, 39);
+}
+
+#endClass {
+	--theme-color: hsl(0, 100%, 12%);
+	background-color: hsl(0, 66%, 46%);
+}
+
+#pollPrompt {
+
+}
+
+dialog {
+	color: white !important;
+}
+
+td, th {
+	border-bottom: 3px solid var(--darkMode-menu-border);
+}
