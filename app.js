@@ -63,35 +63,66 @@ ioServer.on('connection', (browserSocket) => {
     if (latestClassData) {
         browserSocket.emit('classData', latestClassData);
     }
+
+    socket.on('classUpdate', (newClassId) => {
+        console.log(`The user is currently in the class with id ${newClassId}`);
+    });
+
+    socket.on('classUpdate', (classroomData) => {
+        // Forward to connected browsers via our own Socket.IO server
+        latestClassData = classroomData;
+        ioServer.emit('classData', latestClassData);
+        console.log(classroomData);
+    });
+
+    socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+        console.log('Received classData event');
+        console.log('Poll Prompt:', pinPollPrompt);
+        console.log('Poll Responses:', pinPollResponses);
+
+        // Update the database or perform any necessary actions
+        db.run('UPDATE Classes SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+            if (err) {
+                console.error('Error updating class data:', err);
+            } else {
+                console.log('Class data updated successfully');
+            }
+        });
+
+        // Optionally emit the updated data to other clients
+        latestClassData = { pinPollPrompt, pinPollResponses };
+        ioServer.emit('classData', latestClassData);
+    });
+
+    socket.on('connect', () => {
+        console.log('Connected');
+        socket.emit('getActiveClass');
+        socket.emit('classUpdate')
+    });
+
+    socket.on('pinPoll', (data) => {
+        if (pinPollPrompt && pinPollResponses) {
+            db.run('UPDATE Classes SET pollPrompt=? && SET pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+                if (err) {
+                    console.error('Error updating poll data: ', err);
+                } else {
+                    console.log('Poll data updated successfully');
+                }
+            }
+            )
+        }
+
+        console.log('pinPoll', data);
+        latestClassData = data;
+        ioServer.emit('classData', latestClassData);
+        console.log('pinnedPoll', data);
+    });
+    socket.on('disconnect', () => {
+        console.log('Disconnected');
+    });
+
 });
 
-socket.on('classUpdate', (newClassId) => {
-    console.log(`The user is currently in the class with id ${newClassId}`);
-});
-
-socket.on('classUpdate', (classroomData) => {
-    // Forward to connected browsers via our own Socket.IO server
-    latestClassData = classroomData;
-    ioServer.emit('classData', latestClassData);
-    console.log(classroomData);
-});
-
-socket.on('connect', () => {
-    console.log('Connected');
-    socket.emit('getActiveClass');
-    socket.emit('classUpdate')
-});
-
-socket.on('pinPoll', (data) => {
-    if (data.pollPinned == true && data.poll) {
-        db.run('UPDATE Classes SET pollPrompt=? WHERE id=?', [data.poll.prompt, data.id]);
-    }
-
-    console.log('pinPoll', data);
-    latestClassData = data;
-    ioServer.emit('classData', latestClassData);
-    console.log('pinnedPoll', data);
-});
 
 let classId = 1; // Class Id here
 let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
@@ -108,6 +139,8 @@ socket.on('joinClass', (response) => {
         console.log('Failed to join class: ' + response)
     }
 });
+
+
 
 app.use(session({
     secret: 'ohnose!',

@@ -291,17 +291,23 @@
     }
 
     function pinPoll() {
+        socket.emit('testEvent', 'Hello from polls.ejs');
         const data = window.currentClassData;
+        pinPollPrompt = data.poll.prompt;
+        pinPollResponses = Object.keys(data.poll.responses);
         if (!data || !data.poll || data.poll.status !== true) {
             alert('No active poll available.');
             return;
         } else if (data.poll.status == true) {
-            console.log(data.poll)
-            let pollPinned = true;
+            console.log(pinPollPrompt, pinPollResponses);
+            socket.emit('classData', pinPollPrompt, pinPollResponses);
+            alert('Poll pinned.');
         }
-        socket.emit('classData', data.poll, pollPinned);
-        alert('Poll pinned.');
     }
+
+    socket.on('connect', () => {
+        console.log('Socket connected in polls.ejs');
+    });
 
     if (classDataToggle) {
         classDataToggle.addEventListener('click', () => {
