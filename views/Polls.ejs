@@ -141,6 +141,9 @@
                     </div>
                 </div>
             </div>
+            <form id="pinPollForm" action="/pinpoll" method="POST" style="display:none;">
+                <input type="hidden" name="pollPrompt" id="pollPrompt" value="">
+                <input type="hidden" name="pollResponses" id="pollResponses" value="">
 </body>
 <script>
     window.currentUser = <% - JSON.stringify({ name: (user || null), permissions: (permissions || null) }) %>
@@ -282,16 +285,24 @@
 
         const pinButton = document.createElement('button');
         pinButton.textContent = 'Pin';
+        pinButton.type = 'submit'; 
         pinButton.addEventListener('click', () => {
             pinPoll();
         });
         pinButton.id = 'pinPollButton';
         pinButton.style.marginTop = '8px';
         pollDiv.appendChild(pinButton);
+        pinButton.addEventListener('click', () => {
+                pinPoll();
+                document.getElementById('pollPrompt').value = pinPollPrompt;
+                document.getElementById('pollResponses').value = JSON.stringify(pinPollResponses);
+                document.getElementById('pinPollForm').submit();
+            });
+
     }
 
     function pinPoll() {
-        socket.emit('testEvent', 'Hello from polls.ejs');
+        // socket.emit('testEvent', 'Hello from polls.ejs');
         const data = window.currentClassData;
         pinPollPrompt = data.poll.prompt;
         pinPollResponses = Object.keys(data.poll.responses);
@@ -301,6 +312,7 @@
         } else if (data.poll.status == true) {
             console.log(pinPollPrompt, pinPollResponses);
             socket.emit('classData', pinPollPrompt, pinPollResponses);
+
             alert('Poll pinned.');
         }
     }
