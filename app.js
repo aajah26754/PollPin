@@ -58,16 +58,18 @@ app.use(express.static('public'));
 
 let latestClassData = null;
 
-ioServer.on('connection', (browserSocket) => {
+ioServer.on('connection', (socket) => {
     console.log('Browser connected to PollPin socket');
-    browserSocket.emit('serverAlive', { ok: true, ts: Date.now() });
+    socket.emit('serverAlive', { ok: true, ts: Date.now() });
     if (latestClassData) {
-        browserSocket.emit('classData', latestClassData);
+        socket.emit('classData', latestClassData);
     }
 
-    socket.on('classUpdate', (newClassId) => {
-        console.log(`The user is currently in the class with id ${newClassId}`);
-    });
+
+});
+socket.on('classUpdate', (newClassId) => {
+    console.log(`The user is currently in the class with id ${newClassId}`);
+});
 
     socket.on('classUpdate', (classroomData) => {
         // Forward to connected browsers via our own Socket.IO server
@@ -108,35 +110,30 @@ ioServer.on('connection', (browserSocket) => {
         ioServer.emit('classData', latestClassData);
     });
 
-    socket.on('connect', () => {
-        console.log('Connected');
-        socket.emit('getActiveClass');
-        socket.emit('classUpdate')
-    });
+socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+    console.log('Received classData event');
+    console.log('Poll Prompt:', pinPollPrompt);
+    console.log('Poll Responses:', pinPollResponses);
 
-    socket.on('pinPoll', (data) => {
-        if (pinPollPrompt && pinPollResponses) {
-            db.run('UPDATE Classes SET pollPrompt=? && SET pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
-                if (err) {
-                    console.error('Error updating poll data: ', err);
-                } else {
-                    console.log('Poll data updated successfully');
-                }
-            }
-            )
+    // Update the database or perform any necessary actions
+    db.run('UPDATE Classes SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+        if (err) {
+            console.error('Error updating class data:', err);
+        } else {
+            console.log('Class data updated successfully');
         }
-
-        console.log('pinPoll', data);
-        latestClassData = data;
-        ioServer.emit('classData', latestClassData);
-        console.log('pinnedPoll', data);
-    });
-    socket.on('disconnect', () => {
-        console.log('Disconnected');
     });
 
+    // Optionally emit the updated data to other clients
+    latestClassData = { pinPollPrompt, pinPollResponses };
+    ioServer.emit('classData', latestClassData);
 });
 
+socket.on('connect', () => {
+    console.log('Connected');
+    socket.emit('getActiveClass');
+    socket.emit('classUpdate')
+});
 
 let classId = 1; // Class Id here
 let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
@@ -154,6 +151,12 @@ socket.on('joinClass', (response) => {
     }
 });
 
+
+
+socket.on('helloWorld', (data) => {
+    console.log(data);
+    console.log('hi');
+});
 
 
 app.use(session({
@@ -202,14 +205,33 @@ app.get('/', (req, res) => {
     res.render('index');
 })
 
+
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls })
+        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls, polls: req.session.polls })
         console.log(req.session.user)
 
     } catch (error) {
         console.error('Error rendering Polls page: ', error)
     }
+});
+
+app.post('/pinpoll', isAuthenticated, (req, res) => {
+    const pinPollPrompt = req.body.pollPrompt;
+    const pinPollResponses = JSON.parse(req.body.pollResponses);
+
+    console.log('Received pinPollPrompt:', pinPollPrompt);
+    console.log('Received pinPollResponses:', pinPollResponses);
+
+    // Perform any necessary actions, such as saving to the database
+    db.run('INSERT INTO Polls (pollPrompt, pollResponse) VALUES (?, ?)', [pinPollPrompt, JSON.stringify(pinPollResponses)], (err) => {
+        if (err) {
+            console.error('Error saving poll data:', err);
+            return res.status(500).send('Internal Server Error');
+        }
+        console.log('Poll data saved successfully');
+        res.redirect('/Polls'); // Redirect back to the Polls page
+    });
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
