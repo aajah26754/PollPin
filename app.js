@@ -1,4 +1,3 @@
-
 /*
 HOW TO SET UP
 
@@ -79,7 +78,7 @@ socket.on('classUpdate', (newClassId) => {
         db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
             if (err) {
                 console.error('Error fetching class data: ', err);
-            } else {
+            } else if (!row) {
                 db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
                     [
                     classroomData.id,
@@ -93,6 +92,22 @@ socket.on('classUpdate', (newClassId) => {
                             console.error('Error inserting class data: ', err);
                         } else {
                             console.log('Class data inserted successfully');
+                        }
+                    });
+            } else {
+                db.run('UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
+                    [
+                        classroomData.className,
+                        JSON.stringify(classroomData.students[1].id),
+                        classroomData.key,
+                        JSON.stringify(classroomData.permissions),
+                        classroomData.id
+                    ],
+                    (err) => {
+                        if (err) {
+                            console.error('Error updating class data: ', err);
+                        } else {
+                            console.log('Class data updated successfully');
                         }
                     });
             }
@@ -181,23 +196,42 @@ function isAuthenticated(req, res, next) {
 app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token)
+        console.log("Token data:", tokenData)
         req.session.token = tokenData
         req.session.user = tokenData.displayName
         req.session.permissions = tokenData.permissions
         req.session.email = tokenData.email
+        req.session.activeClass = tokenData.activeClass
         console.log("Logged in as " + req.session.user)
         res.redirect('/')
-        db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
+        db.get('SELECT * FROM users WHERE fb_name=? AND fb_id=?', [req.session.user, tokenData.id], (err, row) => {
             if (err) {
                 console.log(err)
                 res.send("There big bad error:\n" + err)
             } else if (!row) {
-                db.run('INSERT INTO users(fb_name, fb_id, permissions, email) VALUES(?, ?, ?, ?);', [req.session.user, tokenData.id, tokenData.permissions, tokenData.email], (err) => {
-                    if (err) {
-                        console.log(err)
-                        res.send("Database error:\n" + err)
+                // Insert new user
+                db.run(
+                    'INSERT INTO users(fb_name, fb_id, permissions, email, activeClass) VALUES(?, ?, ?, ?, ?);',
+                    [req.session.user, tokenData.id, tokenData.permissions, tokenData.email, tokenData.activeClass],
+                    (err) => {
+                        if (err) {
+                            console.log(err)
+                            res.send("Database error:\n" + err)
+                        }
                     }
-                });
+                );
+            } else {
+                // Update existing user's activeClass
+                db.run(
+                    'UPDATE users SET activeClass=? WHERE fb_name=? AND fb_id=?;',
+                    [tokenData.activeClass, req.session.user, tokenData.id],
+                    (err) => {
+                        if (err) {
+                            console.log(err)
+                            res.send("Database error:\n" + err)
+                        }
+                    }
+                );
             }
         });
     } else {
