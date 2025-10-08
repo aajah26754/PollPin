@@ -5,15 +5,31 @@
 </head>
 <body>
     <h1>Your Classes</h1>
-    <% if (classes.length > 0) { %>
-        <ul>
-            <% classes.forEach(c => { %>
-                <li><%= c.className %></li>
-            <% }) %>
-        </ul>
-    <% } else { %>
-        <p>No classes found for your account.</p>
-    <% } %>
 
+    <form action="/classes" method="POST">
+        <label>Class Name:</label>
+        <input type="text" name="name" required>
+
+        <label>Class Key:</label>
+        <input type="number" name="key" required>
+
+        <button type="submit">Create Class</button>
+    </form>
+
+    <hr>
+
+    <% if (classes.length === 0) { %>
+        <p>No classes found.</p>
+    <% } else { %>
+        <% classes.forEach(classItem => { %>
+            <div>
+                <strong><%= classItem.name %></strong><br>
+                Owner ID: <%= classItem.owner %><br>
+                Key: <%= classItem.key %><br>
+                Permissions: <%= classItem.permissions %>
+                <hr>
+            </div>
+        <% }) %>
+    <% } %>
 </body>
 </html>
