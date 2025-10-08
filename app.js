@@ -1,3 +1,4 @@
+
 /*
 HOW TO SET UP
 
@@ -70,12 +71,44 @@ socket.on('classUpdate', (newClassId) => {
     console.log(`The user is currently in the class with id ${newClassId}`);
 });
 
-socket.on('classUpdate', (classroomData) => {
-    // Forward to connected browsers via our own Socket.IO server
-    latestClassData = classroomData;
-    ioServer.emit('classData', latestClassData);
-    console.log(classroomData);
-});
+    socket.on('classUpdate', (classroomData) => {
+        // Forward to connected browsers via our own Socket.IO server
+        latestClassData = classroomData;
+        ioServer.emit('classData', latestClassData);
+        console.log(classroomData);
+        db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
+            if (err) {
+                console.error('Error fetching class data: ', err);
+            } else {
+                db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)', [classroomData.id, classroomData.className, classroomData.students[1], classroomData.key, classroomData.permissions], (err) => {
+                    if (err) {
+                        console.error('Error inserting class data: ', err);
+                    } else {
+                        console.log('Class data inserted successfully');
+                    }
+                });
+            }
+        });
+    });
+
+    socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+        console.log('Received classData event');
+        console.log('Poll Prompt:', pinPollPrompt);
+        console.log('Poll Responses:', pinPollResponses);
+
+        // Update the database or perform any necessary actions
+        db.run('UPDATE Polls SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+            if (err) {
+                console.error('Error updating class data:', err);
+            } else {
+                console.log('Class data updated successfully');
+            }
+        });
+
+        // Optionally emit the updated data to other clients
+        latestClassData = { pinPollPrompt, pinPollResponses };
+        ioServer.emit('classData', latestClassData);
+    });
 
 socket.on('classData', (pinPollPrompt, pinPollResponses) => {
     console.log('Received classData event');
@@ -102,28 +135,6 @@ socket.on('connect', () => {
     socket.emit('classUpdate')
 });
 
-socket.on('pinPoll', (data) => {
-    if (pinPollPrompt && pinPollResponses) {
-        db.run('UPDATE Classes SET pollPrompt=? && SET pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
-            if (err) {
-                console.error('Error updating poll data: ', err);
-            } else {
-                console.log('Poll data updated successfully');
-            }
-        }
-        )
-    }
-
-    console.log('pinPoll', data);
-    latestClassData = data;
-    ioServer.emit('classData', latestClassData);
-    console.log('pinnedPoll', data);
-});
-socket.on('disconnect', () => {
-    console.log('Disconnected');
-});
-
-
 let classId = 1; // Class Id here
 let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
 socket.emit('joinClass', classId);
@@ -139,6 +150,8 @@ socket.on('joinClass', (response) => {
         console.log('Failed to join class: ' + response)
     }
 });
+
+
 
 socket.on('helloWorld', (data) => {
     console.log(data);
@@ -157,8 +170,6 @@ function isAuthenticated(req, res, next) {
     if (req.session.user) next()
     else res.redirect(`/login?redirectURL=${THIS_URL}`)
 }
-
-
 app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token)
@@ -197,7 +208,7 @@ app.get('/', (req, res) => {
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls })
+        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls, polls: req.session.polls })
         console.log(req.session.user)
 
     } catch (error) {

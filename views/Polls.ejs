@@ -312,7 +312,6 @@
         } else if (data.poll.status == true) {
             console.log(pinPollPrompt, pinPollResponses);
             socket.emit('classData', pinPollPrompt, pinPollResponses);
-
             alert('Poll pinned.');
         }
     }
