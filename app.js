@@ -31,9 +31,10 @@ const session = require('express-session');
 
 const FORMBAR_URL = 'http://localhost:420';
 const API_KEY = process.env.API_KEY;
-const THIS_URL = 'http://localhost:3000/login';
-const AUTH_URL = 'http://localhost:420/oauth';
-const port = 3000;
+const jwt = require('jsonwebtoken')
+const session = require('express-session')
+const THIS_URL = 'http://localhost:3000/login'
+const AUTH_URL = 'http://localhost:420/oauth'
 
 const socket = io(FORMBAR_URL, {
     extraHeaders: { api: API_KEY }
@@ -56,10 +57,18 @@ app.use(session({
 
 let latestClassData = null;
 
-ioServer.on('connection', (browserSocket) => {
+ioServer.on('connection', (socket) => {
     console.log('Browser connected to PollPin socket');
-    browserSocket.emit('serverAlive', { ok: true, ts: Date.now() });
-    if (latestClassData) browserSocket.emit('classData', latestClassData);
+    socket.emit('serverAlive', { ok: true, ts: Date.now() });
+    if (latestClassData) {
+        socket.emit('classData', latestClassData);
+    }
+
+
+});
+socket.on('classUpdate', (newClassId) => {
+    console.log(`The user is currently in the class with id ${newClassId}`);
+});
 
     socket.on('classUpdate', (classroomData) => {
         if (!classroomData) return;
@@ -67,25 +76,26 @@ ioServer.on('connection', (browserSocket) => {
 
         latestClassData = classroomData;
         ioServer.emit('classData', latestClassData);
-
-        db.get('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
-            if (err) return console.error('Error fetching class data:', err);
-
-            if (!row) {
-                db.run(
-                    'INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
+        console.log(classroomData);
+        db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
+            if (err) {
+                console.error('Error fetching class data: ', err);
+            } else {
+                db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
                     [
-                        classroomData.id,
-                        classroomData.className,
-                        JSON.stringify(classroomData.students[1]?.id || null),
-                        classroomData.key,
-                        JSON.stringify(classroomData.permissions)
+                    classroomData.id,
+                    classroomData.className,
+                    JSON.stringify(classroomData.students[1].id),
+                    classroomData.key,
+                    JSON.stringify(classroomData.permissions)
                     ],
                     (err) => {
-                        if (err) console.error('Error inserting class data:', err);
-                        else console.log('Class data inserted successfully');
-                    }
-                );
+                        if (err) {
+                            console.error('Error inserting class data: ', err);
+                        } else {
+                            console.log('Class data inserted successfully');
+                        }
+                    });
             }
         });
     });
@@ -108,33 +118,33 @@ ioServer.on('connection', (browserSocket) => {
         ioServer.emit('classData', latestClassData);
     });
 
-    socket.on('pinPoll', (data) => {
-        console.log('pinPoll', data);
+socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+    console.log('Received classData event');
+    console.log('Poll Prompt:', pinPollPrompt);
+    console.log('Poll Responses:', pinPollResponses);
 
-        const { pinPollPrompt, pinPollResponses } = data || {};
-        if (pinPollPrompt && pinPollResponses) {
-            db.run(
-                'UPDATE Classes SET pollPrompt=?, pollResponse=?',
-                [pinPollPrompt, pinPollResponses],
-                (err) => {
-                    if (err) console.error('Error updating poll data:', err);
-                    else console.log('Poll data updated successfully');
-                }
-            );
+    // Update the database or perform any necessary actions
+    db.run('UPDATE Classes SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+        if (err) {
+            console.error('Error updating class data:', err);
+        } else {
+            console.log('Class data updated successfully');
         }
-
-        latestClassData = data;
-        ioServer.emit('classData', latestClassData);
-        console.log('pinnedPoll', data);
     });
 
-    socket.on('disconnect', () => {
-        console.log('Disconnected from Formbar');
-    });
+    // Optionally emit the updated data to other clients
+    latestClassData = { pinPollPrompt, pinPollResponses };
+    ioServer.emit('classData', latestClassData);
 });
 
-let classId = 1;
-let classCode = 'rne5';
+socket.on('connect', () => {
+    console.log('Connected');
+    socket.emit('getActiveClass');
+    socket.emit('classUpdate')
+});
+
+let classId = 1; // Class Id here
+let classCode = 'rne5' // If you're not already in the classroom, you can join it by using the class code.
 socket.emit('joinClass', classId);
 socket.on('joinClass', (response) => {
     console.log('joinClass', response);
@@ -146,6 +156,18 @@ socket.on('joinClass', (response) => {
         console.log('Failed to join class: ' + response);
     }
 });
+
+socket.on('helloWorld', (data) => {
+    console.log(data);
+    console.log('hi');
+});
+
+
+app.use(session({
+    secret: 'ohnose!',
+    resave: false,
+    saveUninitialized: false
+}))
 
 function isAuthenticated(req, res, next) {
     console.log('Checking Auth');
@@ -203,9 +225,10 @@ app.get('/login', (req, res) => {
     }
 });
 
-app.get('/', (req, res) => {
+app.get('/', isAuthenticated, (req, res) => {
     res.render('index');
 });
+
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
@@ -218,6 +241,24 @@ app.get('/Polls', isAuthenticated, (req, res) => {
         console.error('Error rendering Polls page:', error);
         res.status(500).send('Internal Server Error');
     }
+});
+
+app.post('/pinpoll', isAuthenticated, (req, res) => {
+    const pinPollPrompt = req.body.pollPrompt;
+    const pinPollResponses = JSON.parse(req.body.pollResponses);
+
+    console.log('Received pinPollPrompt:', pinPollPrompt);
+    console.log('Received pinPollResponses:', pinPollResponses);
+
+    // Perform any necessary actions, such as saving to the database
+    db.run('INSERT INTO Polls (pollPrompt, pollResponse) VALUES (?, ?)', [pinPollPrompt, JSON.stringify(pinPollResponses)], (err) => {
+        if (err) {
+            console.error('Error saving poll data:', err);
+            return res.status(500).send('Internal Server Error');
+        }
+        console.log('Poll data saved successfully');
+        res.redirect('/Polls'); // Redirect back to the Polls page
+    });
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
