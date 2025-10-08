@@ -34,7 +34,7 @@ const API_KEY = process.env.API_KEY;
 const jwt = require('jsonwebtoken')
 const session = require('express-session')
 const THIS_URL = 'http://localhost:3000/login'
-const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth'
+const AUTH_URL = 'http://localhost:420/oauth'
 
 
 port = 3000;
@@ -80,13 +80,21 @@ socket.on('classUpdate', (newClassId) => {
             if (err) {
                 console.error('Error fetching class data: ', err);
             } else {
-                db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)', [classroomData.id, classroomData.className, classroomData.students[1], classroomData.key, classroomData.permissions], (err) => {
-                    if (err) {
-                        console.error('Error inserting class data: ', err);
-                    } else {
-                        console.log('Class data inserted successfully');
-                    }
-                });
+                db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
+                    [
+                    classroomData.id,
+                    classroomData.className,
+                    JSON.stringify(classroomData.students[1].id),
+                    classroomData.key,
+                    JSON.stringify(classroomData.permissions)
+                    ],
+                    (err) => {
+                        if (err) {
+                            console.error('Error inserting class data: ', err);
+                        } else {
+                            console.log('Class data inserted successfully');
+                        }
+                    });
             }
         });
     });
@@ -176,13 +184,15 @@ app.get('/login', (req, res) => {
         req.session.token = tokenData
         req.session.user = tokenData.displayName
         req.session.permissions = tokenData.permissions
+        req.session.email = tokenData.email
+        console.log("Logged in as " + req.session.user)
         res.redirect('/')
         db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
             if (err) {
                 console.log(err)
                 res.send("There big bad error:\n" + err)
             } else if (!row) {
-                db.run('INSERT INTO users(fb_name, fb_id, permissions) VALUES(?, ?, ?);', [req.session.user, tokenData.id, tokenData.permissions], (err) => {
+                db.run('INSERT INTO users(fb_name, fb_id, permissions, email) VALUES(?, ?, ?, ?);', [req.session.user, tokenData.id, tokenData.permissions, tokenData.email], (err) => {
                     if (err) {
                         console.log(err)
                         res.send("Database error:\n" + err)
@@ -201,7 +211,7 @@ app.get('/login', (req, res) => {
     }
 });
 
-app.get('/', (req, res) => {
+app.get('/', isAuthenticated, (req, res) => {
     res.render('index');
 })
 
@@ -248,7 +258,7 @@ app.get('/profile', isAuthenticated, (req, res) => {
 });
 
 app.get('/classes', isAuthenticated, (req, res) => {
-    db.all('SELECT className FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
+    db.all('SELECT name FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
         if (err) {
             console.error('Error fetching user data: ', err);
             return res.status(500).send('Internal Server Error');
