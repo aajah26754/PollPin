@@ -70,69 +70,68 @@ socket.on('classUpdate', (newClassId) => {
     console.log(`The user is currently in the class with id ${newClassId}`);
 });
 
-    socket.on('classUpdate', (classroomData) => {
-        if (!classroomData) return;
-        console.log('Received class update:', classroomData);
-
-        latestClassData = classroomData;
-        ioServer.emit('classData', latestClassData);
-        console.log(classroomData);
-        db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
-            if (err) {
-                console.error('Error fetching class data: ', err);
-            } else if (!row) {
-                db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
-                    [
+socket.on('classUpdate', (classroomData) => {
+    // Forward to connected browsers via our own Socket.IO server
+    latestClassData = classroomData;
+    ioServer.emit('classData', latestClassData);
+    console.log(classroomData);
+    db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
+        if (err) {
+            console.error('Error fetching class data: ', err);
+        } else if (!row) {
+            db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
+                [
                     classroomData.id,
                     classroomData.className,
                     JSON.stringify(classroomData.students[1].id),
                     classroomData.key,
                     JSON.stringify(classroomData.permissions)
-                    ],
-                    (err) => {
-                        if (err) {
-                            console.error('Error inserting class data: ', err);
-                        } else {
-                            console.log('Class data inserted successfully');
-                        }
-                    });
-            } else {
-                db.run('UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
-                    [
-                        classroomData.className,
-                        JSON.stringify(classroomData.students[1].id),
-                        classroomData.key,
-                        JSON.stringify(classroomData.permissions),
-                        classroomData.id
-                    ],
-                    (err) => {
-                        if (err) {
-                            console.error('Error updating class data: ', err);
-                        } else {
-                            console.log('Class data updated successfully');
-                        }
-                    });
-            }
-        });
+                ],
+                (err) => {
+                    if (err) {
+                        console.error('Error inserting class data: ', err);
+                    } else {
+                        console.log('Class data inserted successfully');
+                    }
+                });
+        } else {
+            db.run('UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
+                [
+                    classroomData.className,
+                    JSON.stringify(classroomData.students[1].id),
+                    classroomData.key,
+                    JSON.stringify(classroomData.permissions),
+                    classroomData.id
+                ],
+                (err) => {
+                    if (err) {
+                        console.error('Error updating class data: ', err);
+                    } else {
+                        console.log('Class data updated successfully');
+                    }
+                });
+        }
+    });
+});
+
+socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+    console.log('Received classData event');
+    console.log('Poll Prompt:', pinPollPrompt);
+    console.log('Poll Responses:', pinPollResponses);
+
+    // Update the database or perform any necessary actions
+    db.run('UPDATE Polls SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+        if (err) {
+            console.error('Error updating class data:', err);
+        } else {
+            console.log('Class data updated successfully');
+        }
     });
 
-    socket.on('classData', (pinPollPrompt, pinPollResponses) => {
-        console.log('Received classData event');
-        console.log('Poll Prompt:', pinPollPrompt);
-        console.log('Poll Responses:', pinPollResponses);
-
-        db.run(
-            'UPDATE Polls SET pollPrompt=?, pollResponse=?',
-            [pinPollPrompt, pinPollResponses],
-            (err) => {
-                if (err) console.error('Error updating class data:', err);
-                else console.log('Class data updated successfully');
-            }
-        );
-
-        latestClassData = { pinPollPrompt, pinPollResponses };
-        ioServer.emit('classData', latestClassData);
-    });
+    // Optionally emit the updated data to other clients
+    latestClassData = { pinPollPrompt, pinPollResponses };
+    ioServer.emit('classData', latestClassData);
+});
 
 socket.on('classData', (pinPollPrompt, pinPollResponses) => {
     console.log('Received classData event');
