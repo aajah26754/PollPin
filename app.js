@@ -19,41 +19,40 @@ log in (or register)
 */
 
 require('dotenv').config();
-const express = require('express');
-const app = express();
+let express = require('express');
+let app = express();
+
 const http = require('http').createServer(app);
 const sqlite3 = require('sqlite3');
 const { Server } = require('socket.io');
 const ioServer = new Server(http);
 const { io } = require('socket.io-client');
-const jwt = require('jsonwebtoken');
-const session = require('express-session');
-
-const FORMBAR_URL = 'http://localhost:420';
+const FORMBAR_URL = 'http://localhost:420'  //'http://formbeta.yorktechapps.com';
 const API_KEY = process.env.API_KEY;
 const jwt = require('jsonwebtoken')
 const session = require('express-session')
 const THIS_URL = 'http://localhost:3000/login'
 const AUTH_URL = 'http://localhost:420/oauth'
 
+
+port = 3000;
 const socket = io(FORMBAR_URL, {
-    extraHeaders: { api: API_KEY }
+    extraHeaders: {
+        api: API_KEY
+    }
 });
 
 const db = new sqlite3.Database('data/database.db', (err) => {
-    if (err) console.error('Error opening database: ' + err.message);
-    else console.log('Connected to the database.');
+    if (err) {
+        console.error('Error opening database ' + err.message);
+    } else {
+        console.log('Connected to the database.');
+    }
 });
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-
-app.use(session({
-    secret: 'ohnose!',
-    resave: false,
-    saveUninitialized: false
-}));
 
 let latestClassData = null;
 
@@ -163,14 +162,18 @@ let classCode = 'rne5' // If you're not already in the classroom, you can join i
 socket.emit('joinClass', classId);
 socket.on('joinClass', (response) => {
     console.log('joinClass', response);
-    if (response === true) {
-        console.log('Successfully joined class');
-        socket.emit('classUpdate');
+    // If joining the class is successful, it will return true.
+    if (response == true) {
+        console.log('Successfully joined class')
+        socket.emit('classUpdate')
     } else {
+        // If not, try to join the classroom with the class code.
         socket.emit('joinRoom', classCode);
-        console.log('Failed to join class: ' + response);
+        console.log('Failed to join class: ' + response)
     }
 });
+
+
 
 socket.on('helloWorld', (data) => {
     console.log(data);
