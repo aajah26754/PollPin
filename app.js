@@ -4,7 +4,7 @@ HOW TO SET UP
 run {
     npm i
     node app
-    }
+}
 go to localhost:3000
 
 download formbar dev branch from https://github.com/csmith1188/Formbar.js/tree/DEV
@@ -13,10 +13,9 @@ in formbar window, run {
     cp .env-template .env;
     npm run init-db;
     node app;
-    }
+}
 go to localhost:420
 log in (or register)
-
 */
 
 require('dotenv').config();
@@ -189,10 +188,11 @@ app.use(session({
 }))
 
 function isAuthenticated(req, res, next) {
-    console.log("Checking Auth")
-    if (req.session.user) next()
-    else res.redirect(`/login?redirectURL=${THIS_URL}`)
+    console.log('Checking Auth');
+    if (req.session.user) next();
+    else res.redirect(`/login?redirectURL=${THIS_URL}`);
 }
+
 app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token)
@@ -235,28 +235,29 @@ app.get('/login', (req, res) => {
             }
         });
     } else {
-        // If not logged in, redirect to OAuth provider
         if (!req.session.user) {
             return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
         }
-        // Otherwise, show the user value for debugging
-        console.log(req.session.user)
-        res.redirect('/')
+        console.log('Already logged in as:', req.session.user.displayName);
+        res.redirect('/');
     }
 });
 
 app.get('/', isAuthenticated, (req, res) => {
     res.render('index');
-})
+});
 
 
 app.get('/Polls', isAuthenticated, (req, res) => {
     try {
-        res.render('Polls', { user: req.session.user, permissions: req.session.permissions, polls: req.session.polls, polls: req.session.polls })
-        console.log(req.session.user)
-
+        res.render('Polls', {
+            user: req.session.user.displayName,
+            permissions: req.session.user.permissions,
+            polls: req.session.polls
+        });
     } catch (error) {
-        console.error('Error rendering Polls page: ', error)
+        console.error('Error rendering Polls page:', error);
+        res.status(500).send('Internal Server Error');
     }
 });
 
@@ -279,30 +280,50 @@ app.post('/pinpoll', isAuthenticated, (req, res) => {
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
-    db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, user) => {
+    db.get('SELECT * FROM users WHERE fb_name=?', [req.session.user.displayName], (err, user) => {
         if (err) {
-            console.error('Error fetching user data: ', err);
+            console.error('Error fetching user data:', err);
             return res.status(500).send('Internal Server Error');
-        } else {
-            console.log('User data fetched successfully: ', user);
         }
-
         res.render('profile', { user });
     });
 });
 
 app.get('/classes', isAuthenticated, (req, res) => {
-    db.all('SELECT name FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
+    const userId = req.session.user.id;
+
+    db.all('SELECT * FROM Classes WHERE owner = ?', [userId], (err, classes) => {
         if (err) {
-            console.error('Error fetching user data: ', err);
+            console.error('Error fetching classes:', err);
             return res.status(500).send('Internal Server Error');
         }
-        console.log('Classes fetched successfully: ', classes);
         res.render('classes', { classes });
     });
+});
 
+// Create a new class
+app.post('/classes', isAuthenticated, (req, res) => {
+    const { name, key } = req.body;
+    const owner = req.session.user.id;
+    const permissions = 'teacher';
+
+    if (!name || !key) {
+        return res.status(400).send('Class name and key are required.');
+    }
+
+    db.run(
+        'INSERT INTO Classes (name, owner, key, permissions) VALUES (?, ?, ?, ?)',
+        [name, owner, key, permissions],
+        function (err) {
+            if (err) {
+                console.error('Error inserting class:', err);
+                return res.status(500).send('Internal Server Error');
+            }
+            res.redirect('/classes');
+        }
+    );
 });
 
 http.listen(port, () => {
-    console.log(`Listening on ${port}`)
+    console.log(`Listening on http://localhost:${port}`);
 });
