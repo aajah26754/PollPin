@@ -102,12 +102,32 @@
 </head>
 
 <body>
-    <% if ((permissions || 0)>= 0) { %>
+    <!-- <button onclick="console.log(DBpolls)">HEEELPP!!!!!</button>
+    <button onclick="console.log(DBpolls[0].pollPrompt)">SAVE ME!!!!!</button>
+    <button onclick="console.log(DBpolls[0].pollResponse)">D:</button>
+    <button onclick="console.log(DBpolls[0].pid)">0^0</button> -->
+    
+     <% if ((permissions || 0)>= 0) { %> <!--Change to 0)>= 3 for teacher -->
         <div id="topButtons">
             <button id="pollCreateToggle">Create poll</button>
             <button id="classDataToggle">View data</button>
         </div>
         <% } %>
+        <div id="DBpollDiv">
+            <% if (DBpolls && DBpolls.length > 0) { %>
+                <ul>
+                    <% DBpolls.forEach(DBpolls => { %>
+                        <li>
+                            <strong>Prompt:</strong> <%= DBpolls.pollPrompt %><br>
+                            <strong>Response:</strong> <%= JSON.stringify(DBpolls.pollResponse) %>
+                        </li>
+                    <% }) %>
+                </ul>
+            <% } else { %>
+                <p>No DBpolls available.</p>
+            <% } %>
+        </div>
+    
 
             <div id="pollCreateOverlay">
                 <div id="pollCreatePanel">
@@ -144,6 +164,11 @@
             <form id="pinPollForm" action="/pinpoll" method="POST" style="display:none;">
                 <input type="hidden" name="pollPrompt" id="pollPrompt" value="">
                 <input type="hidden" name="pollResponses" id="pollResponses" value="">
+            </form>
+            <form id="unpinPollForm" action="/unpinpoll" method="POST" style="display:none;">
+                <input type="hidden" name="pollPID" id="pollPID" value="">
+            </form>
+    
 </body>
 <script>
     window.currentUser = <% - JSON.stringify({ name: (user || null), permissions: (permissions || null) }) %>
@@ -234,6 +259,53 @@
         currentOptionCount = 1;
         newPollOptionDiv.innerHTML = '<input type="text" placeholder="Poll Option" id="NewPollOption1"></input><br>'; // reset number of option text fields
     }
+ 
+    function databasePollCreation() {
+        DBpolls = <%- JSON.stringify(DBpolls || null) %>;
+        console.log('DBpolls:', DBpolls);
+        DBpollDiv.innerHTML = '';
+
+        // if (!DBpolls || !DBpolls.pollPrompt || !Array.isArray(DBpolls.pollResponse) || DBpolls.pollResponse.length === 0) {
+        //     const msg = document.createElement('div');
+        //     msg.textContent = 'No active database poll available.';
+        //     DBpollDiv.appendChild(msg);
+        //     return;
+        // }
+
+        // Create the poll question
+        DBpolls.forEach(poll => {
+            const prompt = document.createElement('h2');
+            prompt.textContent = poll.pollPrompt;
+            DBpollDiv.appendChild(prompt);
+
+            // Create the poll options
+            const optionsList = document.createElement('ul');
+            poll.pollResponse.forEach((response, index) => {
+                const optionItem = document.createElement('li');
+                const optionButton = document.createElement('button');
+                optionButton.textContent = response;
+                optionButton.id = `pollOption${index + 1}`;
+                optionItem.appendChild(optionButton);
+                optionsList.appendChild(optionItem);
+            });
+            DBpollDiv.appendChild(optionsList);
+            const pollPID = document.createElement('input');
+            pollPID.type = 'hidden';
+            pollPID.value = poll.pid;
+            DBpollDiv.appendChild(pollPID);
+            const unpinButton = document.createElement('button');
+            unpinButton.textContent = 'Unpin';
+            unpinButton.id = 'unpinPollButton';
+            unpinButton.type = 'submit';
+            DBpollDiv.appendChild(unpinButton);
+            unpinButton.addEventListener('click', () => {
+                unpinPoll(poll);
+                console.log("ITS GOING DOWN NOW: " + poll.pid);
+                document.getElementById('pollPID').value = poll.pid;
+                document.getElementById('unpinPollForm').submit();
+            });
+        });
+    }
 </script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -244,7 +316,7 @@
         console.log('classData:', classroomData);
         window.currentClassData = classroomData;
         renderClassData();
-        ClassDataPoll();
+        databasePollCreation();
     });
     socket.on('disconnect', (reason) => console.log('socket disconnected', reason));
     socket.on('connect_error', (err) => console.log('socket connect_error', err));
@@ -302,8 +374,6 @@
     }
 
     function pinPoll() {
-        // socket.emit('testEvent', 'Hello from polls.ejs');
-        const data = window.currentClassData;
         pinPollPrompt = data.poll.prompt;
         pinPollResponses = Object.keys(data.poll.responses);
         if (!data || !data.poll || data.poll.status !== true) {
@@ -313,6 +383,14 @@
             console.log(pinPollPrompt, pinPollResponses);
             socket.emit('classData', pinPollPrompt, pinPollResponses);
             alert('Poll pinned.');
+        }
+    }
+    function unpinPoll(poll) {
+        let unpinningPID = poll.value; // Get the poll PID
+        if (poll.status == true) {
+            console.log(unpinningPID);
+            socket.emit('unpinPoll', unpinningPID);
+            alert('Poll unpinned.');
         }
     }
 
@@ -359,6 +437,7 @@
     // Render once on DOM ready in case data was already received
     window.addEventListener('DOMContentLoaded', () => {
         ClassDataPoll();
+        databasePollCreation();
     });
 </script>
 
