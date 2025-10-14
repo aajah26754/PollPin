@@ -290,13 +290,16 @@ app.get('/profile', isAuthenticated, (req, res) => {
 });
 
 app.get('/classes', isAuthenticated, (req, res) => {
-    const userId = req.session.user.id;
+    // Assuming userId is stored in req.user.id after authentication
+    const userId = req.session.token.id;
 
     db.all('SELECT * FROM Classes WHERE owner = ?', [userId], (err, classes) => {
         if (err) {
             console.error('Error fetching classes:', err);
             return res.status(500).send('Internal Server Error');
         }
+
+        // Render only the classes owned by the user
         res.render('classes', { classes });
     });
 });
