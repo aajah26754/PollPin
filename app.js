@@ -75,15 +75,19 @@ socket.on('classUpdate', (classroomData) => {
     latestClassData = classroomData;
     ioServer.emit('classData', latestClassData);
     console.log(classroomData);
-    db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
+
+    // Check if the class already exists
+    db.get('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
         if (err) {
             console.error('Error fetching class data: ', err);
         } else if (!row) {
-            db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
+            // Only insert if the class does not exist
+            db.run(
+                'INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
                 [
                     classroomData.id,
                     classroomData.className,
-                    JSON.stringify(classroomData.students[1].id),
+                    JSON.stringify(classroomData.students[1]?.id || null),
                     classroomData.key,
                     JSON.stringify(classroomData.permissions)
                 ],
@@ -93,12 +97,15 @@ socket.on('classUpdate', (classroomData) => {
                     } else {
                         console.log('Class data inserted successfully');
                     }
-                });
+                }
+            );
         } else {
-            db.run('UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
+            // Update if the class already exists
+            db.run(
+                'UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
                 [
                     classroomData.className,
-                    JSON.stringify(classroomData.students[1].id),
+                    JSON.stringify(classroomData.students[1]?.id || null),
                     classroomData.key,
                     JSON.stringify(classroomData.permissions),
                     classroomData.id
@@ -109,7 +116,8 @@ socket.on('classUpdate', (classroomData) => {
                     } else {
                         console.log('Class data updated successfully');
                     }
-                });
+                }
+            );
         }
     });
 });
