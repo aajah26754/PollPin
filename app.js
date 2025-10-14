@@ -1,11 +1,10 @@
-
 /*
 HOW TO SET UP
 
 run {
     npm i
     node app
-    }
+}
 go to localhost:3000
 
 download formbar dev branch from https://github.com/csmith1188/Formbar.js/tree/DEV
@@ -14,10 +13,9 @@ in formbar window, run {
     cp .env-template .env;
     npm run init-db;
     node app;
-    }
+}
 go to localhost:420
 log in (or register)
-
 */
 
 require('dotenv').config();
@@ -34,7 +32,7 @@ const API_KEY = process.env.API_KEY;
 const jwt = require('jsonwebtoken')
 const session = require('express-session')
 const THIS_URL = 'http://localhost:3000/login'
-const AUTH_URL = 'https://formbeta.yorktechapps.com/oauth'
+const AUTH_URL = 'http://localhost:420/oauth'
 
 
 port = 3000;
@@ -80,16 +78,63 @@ socket.on('classUpdate', (classroomData) => {
     db.run('SELECT * FROM Classes WHERE id=?', [classroomData.id], (err, row) => {
         if (err) {
             console.error('Error fetching class data: ', err);
+        } else if (!row) {
+            db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)',
+                [
+                    classroomData.id,
+                    classroomData.className,
+                    JSON.stringify(classroomData.students[1].id),
+                    classroomData.key,
+                    JSON.stringify(classroomData.permissions)
+                ],
+                (err) => {
+                    if (err) {
+                        console.error('Error inserting class data: ', err);
+                    } else {
+                        console.log('Class data inserted successfully');
+                    }
+                });
         } else {
-            db.run('INSERT INTO Classes (id, name, owner, key, permissions) VALUES (?, ?, ?, ?, ?)', [classroomData.id, classroomData.className, classroomData.students[1], classroomData.key, classroomData.permissions], (err) => {
-                if (err) {
-                    console.error('Error inserting class data: ', err);
-                } else {
-                    console.log('Class data inserted successfully');
-                }
-            });
+            db.run('UPDATE Classes SET name=?, owner=?, key=?, permissions=? WHERE id=?',
+                [
+                    classroomData.className,
+                    JSON.stringify(classroomData.students[1].id),
+                    classroomData.key,
+                    JSON.stringify(classroomData.permissions),
+                    classroomData.id
+                ],
+                (err) => {
+                    if (err) {
+                        console.error('Error updating class data: ', err);
+                    } else {
+                        console.log('Class data updated successfully');
+                    }
+                });
         }
     });
+});
+
+socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+    console.log('Received classData event');
+    console.log('Poll Prompt:', pinPollPrompt);
+    console.log('Poll Responses:', pinPollResponses);})
+socket.on('classData', (pinPollPrompt, pinPollResponses) => {
+    console.log('Received classData event');
+    console.log('Poll Prompt:', pinPollPrompt);
+    console.log('Poll Responses:', pinPollResponses);
+
+    // Update the database or perform any necessary actions
+    db.run('UPDATE Polls SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+        if (err) {
+            console.error('Error updating class data:', err);
+        } else {
+            console.log('Class data updated successfully');
+        }
+    });
+
+    // Optionally emit the updated data to other clients
+    latestClassData = { pinPollPrompt, pinPollResponses };
+    ioServer.emit('classData', latestClassData);
 });
 
 socket.on('classData', (pinPollPrompt, pinPollResponses) => {
@@ -98,7 +143,7 @@ socket.on('classData', (pinPollPrompt, pinPollResponses) => {
     console.log('Poll Responses:', pinPollResponses);
 
     // Update the database or perform any necessary actions
-    db.run('UPDATE Polls SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
+    db.run('UPDATE Classes SET pollPrompt=?, pollResponse=?', [pinPollPrompt, pinPollResponses], (err) => {
         if (err) {
             console.error('Error updating class data:', err);
         } else {
@@ -140,44 +185,64 @@ app.use(session({
 }))
 
 function isAuthenticated(req, res, next) {
-    console.log("Checking Auth")
-    if (req.session.user) next()
-    else res.redirect(`/login?redirectURL=${THIS_URL}`)
+    console.log('Checking Auth');
+    if (req.session.user) next();
+    else res.redirect(`/login?redirectURL=${THIS_URL}`);
 }
+
 app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token)
+        console.log("Token data:", tokenData)
         req.session.token = tokenData
         req.session.user = tokenData.displayName
         req.session.permissions = tokenData.permissions
+        req.session.email = tokenData.email
+        req.session.activeClass = tokenData.activeClass
+        console.log("Logged in as " + req.session.user)
         res.redirect('/')
-        db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, row) => {
+        db.get('SELECT * FROM users WHERE fb_name=? AND fb_id=?', [req.session.user, tokenData.id], (err, row) => {
             if (err) {
                 console.log(err)
                 res.send("There big bad error:\n" + err)
             } else if (!row) {
-                db.run('INSERT INTO users(fb_name, fb_id, permissions) VALUES(?, ?, ?);', [req.session.user, tokenData.id, tokenData.permissions], (err) => {
-                    if (err) {
-                        console.log(err)
-                        res.send("Database error:\n" + err)
+                // Insert new user
+                db.run(
+                    'INSERT INTO users(fb_name, fb_id, permissions, email, activeClass) VALUES(?, ?, ?, ?, ?);',
+                    [req.session.user, tokenData.id, tokenData.permissions, tokenData.email, tokenData.activeClass],
+                    (err) => {
+                        if (err) {
+                            console.log(err)
+                            res.send("Database error:\n" + err)
+                        }
                     }
-                });
+                );
+            } else {
+                // Update existing user's activeClass
+                db.run(
+                    'UPDATE users SET activeClass=? WHERE fb_name=? AND fb_id=?;',
+                    [tokenData.activeClass, req.session.user, tokenData.id],
+                    (err) => {
+                        if (err) {
+                            console.log(err)
+                            res.send("Database error:\n" + err)
+                        }
+                    }
+                );
             }
         });
     } else {
-        // If not logged in, redirect to OAuth provider
         if (!req.session.user) {
             return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
         }
-        // Otherwise, show the user value for debugging
-        console.log(req.session.user)
-        res.redirect('/')
+        console.log('Already logged in as:', req.session.user.displayName);
+        res.redirect('/');
     }
 });
 
-app.get('/', (req, res) => {
+app.get('/', isAuthenticated, (req, res) => {
     res.render('index');
-})
+});
 
 
 app.get('/Polls', isAuthenticated, (req, res) => {
@@ -197,7 +262,7 @@ app.get('/Polls', isAuthenticated, (req, res) => {
 
             // Render the Polls page with the retrieved data
             res.render('Polls', {
-                user: req.session.user,
+                user: req.session.user.displayName,
                 permissions: req.session.permissions,
                 polls: req.session.polls,
                 DBpolls: DBpolls
@@ -206,6 +271,8 @@ app.get('/Polls', isAuthenticated, (req, res) => {
             console.log('GO MY CODE: ', DBpolls);
         });
     } catch (error) {
+        console.error('Error rendering Polls page:', error);
+        res.status(500).send('Internal Server Error');
         console.error('Error rendering Polls page:', error);
         res.status(500).send('Internal Server Error');
     }
@@ -246,30 +313,53 @@ app.post('/unpinpoll', (req, res) => {
 });
 
 app.get('/profile', isAuthenticated, (req, res) => {
-    db.get('SELECT * FROM users WHERE fb_name=?', req.session.user, (err, user) => {
+    db.get('SELECT * FROM users WHERE fb_name=?', [req.session.user.displayName], (err, user) => {
         if (err) {
-            console.error('Error fetching user data: ', err);
+            console.error('Error fetching user data:', err);
             return res.status(500).send('Internal Server Error');
-        } else {
-            console.log('User data fetched successfully: ', user);
         }
-
         res.render('profile', { user });
     });
 });
 
 app.get('/classes', isAuthenticated, (req, res) => {
-    db.all('SELECT className FROM Classes WHERE studentId=?', [req.session.user.id], (err, classes) => {
+    // Assuming userId is stored in req.user.id after authentication
+    const userId = req.session.token.id;
+
+    db.all('SELECT * FROM Classes WHERE owner = ?', [userId], (err, classes) => {
         if (err) {
-            console.error('Error fetching user data: ', err);
+            console.error('Error fetching classes:', err);
             return res.status(500).send('Internal Server Error');
         }
-        console.log('Classes fetched successfully: ', classes);
+
+        // Render only the classes owned by the user
         res.render('classes', { classes });
     });
+});
 
+// Create a new class
+app.post('/classes', isAuthenticated, (req, res) => {
+    const { name, key } = req.body;
+    const owner = req.session.user.id;
+    const permissions = 'teacher';
+
+    if (!name || !key) {
+        return res.status(400).send('Class name and key are required.');
+    }
+
+    db.run(
+        'INSERT INTO Classes (name, owner, key, permissions) VALUES (?, ?, ?, ?)',
+        [name, owner, key, permissions],
+        function (err) {
+            if (err) {
+                console.error('Error inserting class:', err);
+                return res.status(500).send('Internal Server Error');
+            }
+            res.redirect('/classes');
+        }
+    );
 });
 
 http.listen(port, () => {
-    console.log(`Listening on ${port}`)
+    console.log(`Listening on http://localhost:${port}`);
 });

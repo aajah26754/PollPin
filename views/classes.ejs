@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Your Classes</title>
 </head>
+
 <body>
     <h1>Your Classes</h1>
-    <% if (classes.length > 0) { %>
-        <ul>
-            <% classes.forEach(c => { %>
-                <li><%= c.className %></li>
-            <% }) %>
-        </ul>
-    <% } else { %>
-        <p>No classes found for your account.</p>
-    <% } %>
+    <hr>
 
+    <% if (classes.length===0) { %>
+        <p>No classes found.</p>
+        <% } else { %>
+            <% classes.forEach(classItem=> { %>
+                <div>
+                    <strong>
+                        <%= classItem.name %>
+                    </strong>
+                                <hr>
+                </div>
+                <% }) %>
+                    <% } %>
+                        <a href="/">Go to Home Page</a>
 </body>
+
 </html>
